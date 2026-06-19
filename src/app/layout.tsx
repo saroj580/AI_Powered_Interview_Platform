@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/layout/theme-provider";
+import { CopilotProvider } from "@/components/copilot/copilot-provider";
+import { InterviewCopilot } from "@/components/copilot/interview-copilot";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -32,8 +34,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
-          <Toaster richColors position="top-right" />
+          <CopilotProvider>
+            {children}
+            <InterviewCopilot />
+            <Toaster richColors position="top-right" />
+          </CopilotProvider>
         </ThemeProvider>
       </body>
     </html>
