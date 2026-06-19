@@ -1,79 +1,138 @@
 "use client";
 import { motion } from "framer-motion";
-import { Settings2, Cpu, MessageSquare, FileBarChart } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+    ResumeSetupMockup,
+    QuestionGenerationMockup,
+    LiveInterviewMockup,
+    FeedbackDashboardMockup,
+} from "@/components/landing/how-it-works-mockups";
 
 const steps = [
     {
-        step: "01",
-        icon: Settings2,
-        title: "Set Up Your Interview",
-        description: "Choose your target role, experience level, difficulty, interview type, and number of questions.",
-        color: "text-violet-500",
+        number: "01",
+        title: "Upload Resume & Define Goal",
+        description:
+            "Upload your resume, select your target role, experience level, interview type, and difficulty level.",
+        benefits: ["ATS Analysis", "Skill Extraction", "Personalized Setup"],
+        Mockup: ResumeSetupMockup,
     },
     {
-        step: "02",
-        icon: Cpu,
-        title: "AI Generates Questions",
-        description: "Gemini 2.5 Pro creates a custom set of technical, behavioral, and problem-solving questions tailored to your profile.",
-        color: "text-blue-500",
+        number: "02",
+        title: "AI Generates Personalized Questions",
+        description:
+            "InterviewAI analyzes your profile and creates a custom interview tailored to your target position.",
+        benefits: ["Technical Questions", "Behavioral Questions", "Adaptive Difficulty"],
+        Mockup: QuestionGenerationMockup,
     },
     {
-        step: "03",
-        icon: MessageSquare,
-        title: "Complete the Interview",
-        description: "Answer questions via text or voice. The AI follows up with context-aware questions based on your responses.",
-        color: "text-emerald-500",
+        number: "03",
+        title: "Take the Interview",
+        description:
+            "Answer through voice, text, or coding challenges while AI evaluates performance in real time.",
+        benefits: ["Coding Environment", "Voice Analysis", "Real-Time Assessment"],
+        Mockup: LiveInterviewMockup,
     },
     {
-        step: "04",
-        icon: FileBarChart,
-        title: "Get AI Feedback",
-        description: "Receive a detailed report with scores, strengths, weaknesses, improvement suggestions, and a learning plan.",
-        color: "text-amber-500",
+        number: "04",
+        title: "Receive Detailed Feedback",
+        description:
+            "Get a comprehensive performance report with strengths, weaknesses, ATS insights, learning paths, and improvement suggestions.",
+        benefits: ["Skill Gap Analysis", "Performance Scores", "Learning Roadmap"],
+        Mockup: FeedbackDashboardMockup,
     },
-];
+] as const;
+
+const fadeUp = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
+};
+
+function StepContent({
+    number,
+    title,
+    description,
+    benefits,
+}: {
+    number: string;
+    title: string;
+    description: string;
+    benefits: readonly string[];
+}) {
+    return (
+        <div className="flex flex-col justify-center max-w-md lg:max-w-lg">
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground mb-4">
+                Step {number}
+            </p>
+            <h3 className="text-2xl sm:text-[1.75rem] font-semibold text-foreground tracking-tight leading-snug mb-4">
+                {title}
+            </h3>
+            <p className="text-[15px] text-muted-foreground leading-relaxed mb-8">
+                {description}
+            </p>
+            <ul className="space-y-2.5">
+                {benefits.map((benefit) => (
+                    <li key={benefit} className="flex items-center gap-2.5 text-sm text-foreground">
+                        <span className="text-primary text-[13px] leading-none" aria-hidden="true">✓</span>
+                        {benefit}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
 
 export function HowItWorksSection() {
     return (
-        <section id="how-it-works" className="py-24 bg-muted/30">
+        <section id="how-it-works" className="py-28 sm:py-32 bg-background">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="text-center mb-16"
+                <motion.header
+                    initial="hidden"
+                    whileInView="show"
+                    viewport={{ once: true, margin: "-80px" }}
+                    variants={fadeUp}
+                    className="max-w-2xl mb-24 sm:mb-28"
                 >
-                    <p className="text-primary font-semibold text-sm uppercase tracking-widest mb-3">How It Works</p>
-                    <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-                        From setup to feedback in <span className="gradient-text">minutes</span>
+                    <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary mb-4">
+                        How It Works
+                    </p>
+                    <h2 className="text-3xl sm:text-4xl font-semibold text-foreground tracking-tight leading-[1.15] mb-5">
+                        Prepare Like a Real Interview. Improve With Every Session.
                     </h2>
-                </motion.div>
+                    <p className="text-lg text-muted-foreground leading-relaxed">
+                        From resume upload to personalized feedback, InterviewAI guides you through a complete interview preparation journey.
+                    </p>
+                </motion.header>
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 relative">
-                    {/* Connector line on desktop */}
-                    <div className="hidden lg:block absolute top-12 left-[12.5%] right-[12.5%] h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+                <div className="space-y-28 sm:space-y-36">
+                    {steps.map((step, i) => {
+                        const reversed = i % 2 === 1;
+                        const { Mockup } = step;
 
-                    {steps.map((step, i) => (
-                        <motion.div
-                            key={step.step}
-                            initial={{ opacity: 0, y: 24 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: i * 0.12 }}
-                            className="flex flex-col items-center text-center"
-                        >
-                            <div className="relative mb-6">
-                                <div className={`h-20 w-20 rounded-2xl bg-background border-2 border-border flex items-center justify-center shadow-card`}>
-                                    <step.icon className={`h-8 w-8 ${step.color}`} />
+                        return (
+                            <motion.article
+                                key={step.number}
+                                initial="hidden"
+                                whileInView="show"
+                                viewport={{ once: true, margin: "-60px" }}
+                                variants={fadeUp}
+                                className={cn(
+                                    "grid lg:grid-cols-2 gap-12 lg:gap-20 items-center",
+                                    reversed && "lg:[&>*:first-child]:order-2 lg:[&>*:last-child]:order-1"
+                                )}
+                            >
+                                <StepContent
+                                    number={step.number}
+                                    title={step.title}
+                                    description={step.description}
+                                    benefits={step.benefits}
+                                />
+                                <div className={cn("w-full", reversed ? "lg:pr-4" : "lg:pl-4")}>
+                                    <Mockup />
                                 </div>
-                                <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center">
-                                    {i + 1}
-                                </span>
-                            </div>
-                            <h3 className="font-semibold text-base mb-2">{step.title}</h3>
-                            <p className="text-muted-foreground text-sm leading-relaxed">{step.description}</p>
-                        </motion.div>
-                    ))}
+                            </motion.article>
+                        );
+                    })}
                 </div>
             </div>
         </section>

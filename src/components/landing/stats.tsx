@@ -40,7 +40,7 @@ function CountUp({ to, suffix }: { to: number; suffix: string }) {
 
 export function StatsSection() {
     return (
-        <section className="py-20 bg-gradient-primary">
+        <section className="py-16 bg-muted/30 border-y border-border">
             <div className="container mx-auto px-4">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
                     {stats.map((stat, i) => (
@@ -50,12 +50,12 @@ export function StatsSection() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ delay: i * 0.1 }}
-                            className="text-center text-white"
+                            className="text-center"
                         >
-                            <div className="text-4xl sm:text-5xl font-extrabold mb-2">
+                            <div className="text-3xl sm:text-4xl font-bold mb-2 text-foreground">
                                 <CountUp to={stat.value} suffix={stat.suffix} />
                             </div>
-                            <p className="text-white/75 text-sm font-medium">{stat.label}</p>
+                            <p className="text-muted-foreground text-sm">{stat.label}</p>
                         </motion.div>
                     ))}
                 </div>

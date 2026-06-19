@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -36,11 +36,11 @@ export function MarketingNavbar() {
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex h-16 items-center justify-between">
                     {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2 font-bold text-lg">
-                        <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-                            <Sparkles className="h-4 w-4 text-white" />
+                    <Link href="/" className="flex items-center gap-2 font-bold text-lg text-foreground">
+                        <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">IA</span>
                         </div>
-                        <span className="gradient-text">InterviewAI</span>
+                        <span>InterviewAI</span>
                     </Link>
 
                     {/* Desktop Nav */}
@@ -63,7 +63,7 @@ export function MarketingNavbar() {
                             <Button variant="ghost" size="sm">Sign In</Button>
                         </Link>
                         <Link href="/register">
-                            <Button size="sm" className="bg-gradient-primary hover:opacity-90 text-white border-0 shadow-glow-purple">
+                            <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
                                 Get Started Free
                             </Button>
                         </Link>
@@ -101,7 +101,7 @@ export function MarketingNavbar() {
                             ))}
                             <div className="flex flex-col gap-2 pt-2 border-t border-border">
                                 <Link href="/login"><Button variant="outline" className="w-full">Sign In</Button></Link>
-                                <Link href="/register"><Button className="w-full bg-gradient-primary text-white border-0">Get Started Free</Button></Link>
+                                <Link href="/register"><Button className="w-full bg-primary text-white hover:bg-primary/90">Get Started Free</Button></Link>
                             </div>
                         </div>
                     </motion.div>
