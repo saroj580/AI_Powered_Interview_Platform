@@ -1,32 +1,49 @@
+"use client";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getScoreColor } from "@/lib/utils";
 
-const areas = [
-    { name: "System Design", score: 55 },
-    { name: "Data Structures", score: 60 },
-    { name: "Algorithms", score: 63 },
-    { name: "Communication", score: 72 },
-    { name: "React Advanced", score: 80 },
-];
+interface SkillPoint { skill: string; score: number }
 
 export function WeakAreasPanel() {
-    return (
-        <Card>
-            <CardHeader className="pb-3">
-                <CardTitle className="text-base">Skill Breakdown</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                {areas.map((area) => (
-                    <div key={area.name}>
-                        <div className="flex justify-between items-center mb-1">
-                            <span className="text-sm text-muted-foreground">{area.name}</span>
-                            <span className={`text-sm font-bold ${getScoreColor(area.score)}`}>{area.score}</span>
-                        </div>
-                        <Progress value={area.score} className="h-1.5" />
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
-    );
+  const [skills, setSkills] = useState<SkillPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/v1/progress")
+      .then((r) => r.json())
+      .then((d) => {
+        const radar: SkillPoint[] = d.skillRadar ?? [];
+        setSkills([...radar].sort((a, b) => a.score - b.score));
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Skill Breakdown</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-5 w-full" />)
+        ) : skills.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No skill data yet. Complete interviews to see your breakdown.</p>
+        ) : (
+          skills.map((s) => (
+            <div key={s.skill}>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm text-muted-foreground">{s.skill}</span>
+                <span className={`text-sm font-bold ${getScoreColor(s.score)}`}>{s.score}</span>
+              </div>
+              <Progress value={s.score} className="h-1.5" />
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
 }

@@ -1,7 +1,7 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,12 +21,28 @@ function GoogleIcon() {
     );
 }
 
+const GOOGLE_ERRORS: Record<string, string> = {
+    google_denied: "Google sign-in was cancelled.",
+    invalid_state: "Security check failed. Please try again.",
+    token_exchange: "Could not complete Google sign-in. Please try again.",
+    no_email: "Google did not provide an email address.",
+    server_error: "Something went wrong. Please try again.",
+};
+
 export default function LoginPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { login, isLoading, error, clearError } = useAuthStore();
     const [showPassword, setShowPassword] = useState(false);
     const emailRef = useRef<HTMLInputElement>(null);
     const passwordRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        const googleError = searchParams.get("error");
+        if (googleError && GOOGLE_ERRORS[googleError]) {
+            useAuthStore.setState({ error: GOOGLE_ERRORS[googleError] });
+        }
+    }, [searchParams]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -59,7 +75,7 @@ export default function LoginPage() {
                 <Button
                     variant="outline"
                     className="w-full h-11 border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#F8FAFC] font-medium"
-                    onClick={() => {}}
+                    onClick={() => { window.location.href = "/api/v1/auth/google"; }}
                     type="button"
                 >
                     <GoogleIcon />

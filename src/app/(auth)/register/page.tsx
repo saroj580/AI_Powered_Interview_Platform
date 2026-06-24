@@ -88,7 +88,7 @@ export default function RegisterPage() {
                 <Button
                     variant="outline"
                     className="w-full h-11 border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#F8FAFC] font-medium"
-                    onClick={() => {}}
+                    onClick={() => { window.location.href = "/api/v1/auth/google"; }}
                     type="button"
                 >
                     <GoogleIcon />

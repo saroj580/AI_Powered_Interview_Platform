@@ -71,15 +71,13 @@ export function DashboardHeader() {
 
                 {/* Notifications */}
                 <DropdownMenu>
-                    <DropdownMenuTrigger>
-                        <div className="relative h-9 w-9 flex items-center justify-center rounded-md hover:bg-muted transition-colors">
-                            <Bell className="h-4 w-4" />
-                            {unreadCount > 0 && (
-                                <Badge className="absolute -top-0.5 -right-0.5 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-primary text-white border-0">
-                                    {unreadCount}
-                                </Badge>
-                            )}
-                        </div>
+                    <DropdownMenuTrigger className="relative h-9 w-9 flex items-center justify-center rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <Bell className="h-4 w-4" />
+                        {unreadCount > 0 && (
+                            <Badge className="absolute -top-0.5 -right-0.5 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-primary text-white border-0">
+                                {unreadCount}
+                            </Badge>
+                        )}
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-80">
                         <DropdownMenuLabel className="font-semibold">Notifications</DropdownMenuLabel>
@@ -103,7 +101,7 @@ export function DashboardHeader() {
 
                 {/* User Avatar with dropdown */}
                 <DropdownMenu>
-                    <DropdownMenuTrigger>
+                    <DropdownMenuTrigger className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
                         <Avatar className="h-8 w-8 cursor-pointer ring-2 ring-primary/20">
                             <AvatarImage src={user?.image ?? undefined} />
                             <AvatarFallback className="bg-gradient-primary text-white text-xs">
