@@ -2,13 +2,15 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronLeft, Sparkles, Video, Code2, MessageSquare, Mic, Layers } from "lucide-react";
+import { ChevronRight, ChevronLeft, Sparkles, Video, Code2, MessageSquare, Mic, Layers, AlertCircle } from "lucide-react";
+import { useAuthStore } from "@/stores/auth-store";
+import { toast } from "sonner";
 
 const TYPES = [
     { id: "TECHNICAL", label: "Technical", desc: "Coding & system design", icon: Code2, color: "text-violet-500" },
@@ -25,6 +27,7 @@ const DIFFICULTIES = [
 ];
 
 const QUESTION_COUNTS = [5, 8, 10, 15, 20];
+const DURATION_MAP: Record<number, number> = { 5: 20, 8: 30, 10: 40, 15: 55, 20: 75 };
 
 interface Config {
     type: string;
@@ -36,8 +39,10 @@ interface Config {
 
 export function InterviewSetupWizard() {
     const router = useRouter();
+    const { user, token } = useAuthStore();
     const [step, setStep] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
     const [config, setConfig] = useState<Config>({
         type: "TECHNICAL",
         role: "",
@@ -48,11 +53,46 @@ export function InterviewSetupWizard() {
 
     const steps = ["Interview Type", "Role & Level", "Difficulty & Count", "Review & Start"];
 
-    function handleStart() {
+    async function handleStart() {
+        if (!user) {
+            setError("Please log in to start an interview.");
+            return;
+        }
+
         setLoading(true);
-        setTimeout(() => {
-            router.push("/candidate/interviews/demo-session/session");
-        }, 1500);
+        setError("");
+
+        try {
+            const res = await fetch("/api/v1/interviews", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({
+                    title: `${config.role || "Software Engineer"} — ${config.type}`,
+                    type: config.type,
+                    targetRole: config.role || "Software Engineer",
+                    difficulty: config.difficulty,
+                    questionCount: config.count,
+                    durationMinutes: DURATION_MAP[config.count] ?? 40,
+                    status: "IN_PROGRESS",
+                    createdById: user.id,
+                }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error?.message ?? "Failed to create interview");
+            }
+
+            const interview = await res.json();
+            toast.success("Interview created! Starting session…");
+            router.push(`/candidate/interviews/${interview.id}/session`);
+        } catch (err) {
+            setError((err as Error).message);
+            setLoading(false);
+        }
     }
 
     return (
@@ -82,7 +122,6 @@ export function InterviewSetupWizard() {
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.25 }}
                 >
-                    {/* Step 0: Interview Type */}
                     {step === 0 && (
                         <Card>
                             <CardHeader><CardTitle>What type of interview?</CardTitle><CardDescription>Choose the format that matches your practice goal</CardDescription></CardHeader>
@@ -107,7 +146,6 @@ export function InterviewSetupWizard() {
                         </Card>
                     )}
 
-                    {/* Step 1: Role & Experience */}
                     {step === 1 && (
                         <Card>
                             <CardHeader><CardTitle>Target role & experience</CardTitle><CardDescription>Questions will be tailored to your specific role</CardDescription></CardHeader>
@@ -139,7 +177,6 @@ export function InterviewSetupWizard() {
                         </Card>
                     )}
 
-                    {/* Step 2: Difficulty & Count */}
                     {step === 2 && (
                         <Card>
                             <CardHeader><CardTitle>Difficulty & question count</CardTitle><CardDescription>Set the challenge level for this session</CardDescription></CardHeader>
@@ -181,12 +218,11 @@ export function InterviewSetupWizard() {
                         </Card>
                     )}
 
-                    {/* Step 3: Review */}
                     {step === 3 && (
                         <Card>
                             <CardHeader>
                                 <CardTitle>Ready to start?</CardTitle>
-                                <CardDescription>Review your configuration before Gemini generates your questions</CardDescription>
+                                <CardDescription>Review your configuration before Groq generates your questions</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="rounded-xl bg-muted/50 p-5 space-y-3">
@@ -196,6 +232,7 @@ export function InterviewSetupWizard() {
                                         { label: "Experience", value: config.experience },
                                         { label: "Difficulty", value: config.difficulty },
                                         { label: "Questions", value: `${config.count} questions` },
+                                        { label: "Est. Duration", value: `~${DURATION_MAP[config.count] ?? 40} min` },
                                     ].map((item) => (
                                         <div key={item.label} className="flex justify-between items-center">
                                             <span className="text-muted-foreground text-sm">{item.label}</span>
@@ -206,9 +243,15 @@ export function InterviewSetupWizard() {
                                 <div className="mt-5 p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-3">
                                     <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                                     <p className="text-sm text-muted-foreground">
-                                        Gemini 2.5 Pro will generate <strong className="text-foreground">{config.count} personalized questions</strong> for a <strong className="text-foreground">{config.role || "software engineering"}</strong> role at <strong className="text-foreground">{config.difficulty.toLowerCase()}</strong> difficulty.
+                                        Groq LLaMA 3.3 will generate <strong className="text-foreground">{config.count} personalized questions</strong> for a <strong className="text-foreground">{config.role || "software engineering"}</strong> role at <strong className="text-foreground">{config.difficulty.toLowerCase()}</strong> difficulty.
                                     </p>
                                 </div>
+                                {error && (
+                                    <div className="mt-4 flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                                        <AlertCircle className="h-4 w-4 shrink-0" />
+                                        {error}
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     )}
@@ -227,7 +270,10 @@ export function InterviewSetupWizard() {
                 ) : (
                     <Button onClick={handleStart} disabled={loading} className="bg-gradient-primary text-white border-0 hover:opacity-90 px-6">
                         {loading ? (
-                            <span className="flex items-center gap-2"><span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating with AI…</span>
+                            <span className="flex items-center gap-2">
+                                <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Creating session…
+                            </span>
                         ) : (
                             <span className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> Start Interview</span>
                         )}

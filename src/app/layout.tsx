@@ -9,6 +9,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   title: { default: "InterviewAI — AI-Powered Interview Platform", template: "%s | InterviewAI" },
   description: "Conduct technical, behavioral and coding interviews with AI-generated questions and real-time evaluation.",
   keywords: ["AI interview", "technical interview", "coding interview", "interview practice", "hiring platform"],

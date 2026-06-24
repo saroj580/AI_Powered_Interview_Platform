@@ -2,13 +2,15 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { NextRequest } from "next/server";
 
-const JWT_SECRET = process.env.JWT_SECRET ?? "interviewai-secret";
-export const AUTH_COOKIE_NAME = "interviewai_token";
+const JWT_SECRET = process.env.JWT_SECRET ?? "interviewai-secret-dev-key";
+export const AUTH_COOKIE_NAME = "token";
 
 export interface AuthPayload {
   userId: string;
   email: string;
   role: string;
+  onboardingCompleted: boolean;
+  name: string;
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -36,6 +38,5 @@ export function extractToken(req: NextRequest): string | null {
   if (authorization?.startsWith("Bearer ")) {
     return authorization.slice(7);
   }
-
   return req.cookies.get(AUTH_COOKIE_NAME)?.value ?? null;
 }

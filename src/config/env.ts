@@ -22,7 +22,7 @@ const env = {
   GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET || '',
   
   // AI Services
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
+  GROQ_API_KEY: process.env.GROQ_API_KEY || '',
   
   // Storage
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
@@ -51,7 +51,7 @@ function validateEnv() {
   const required = [
     'DATABASE_URL',
     'NEXTAUTH_SECRET',
-    'GEMINI_API_KEY',
+    'GROQ_API_KEY',
   ] as const;
 
   const missing = required.filter(key => !env[key as keyof typeof env]);

@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const faqs = [
-    { q: "Is the AI interview similar to a real interview?", a: "Yes. Gemini 2.5 Pro generates role-specific, context-aware questions that adapt based on your answers — simulating real technical and behavioral interviews at top companies." },
+    { q: "Is the AI interview similar to a real interview?", a: "Yes. Groq-powered LLaMA 3.3 generates role-specific, context-aware questions that adapt based on your answers — simulating real technical and behavioral interviews at top companies." },
     { q: "What coding languages are supported?", a: "We support JavaScript, TypeScript, Python, Java, C++, Go, Rust, and C#. Code is executed via Judge0 with real test cases." },
     { q: "Can I use InterviewAI to screen candidates as a recruiter?", a: "Absolutely. The Enterprise plan includes custom assessment creation, candidate invitations, a pipeline management board, and PDF report exports." },
     { q: "How accurate is the AI evaluation?", a: "Our evaluation covers technical accuracy, communication clarity, problem-solving approach, and confidence. Scores are calibrated against thousands of real interview benchmarks." },

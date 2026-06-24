@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { hashPassword, signToken } from "@/lib/auth";
+import { hashPassword, signToken, AUTH_COOKIE_NAME } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const registerSchema = z.object({
@@ -33,21 +33,40 @@ export async function POST(req: NextRequest) {
       email,
       password: hashedPassword,
       role: normalizedRole,
+      onboardingCompleted: false,
     },
   });
 
-  const token = signToken({ userId: user.id, email: user.email, role: user.role });
+  const token = signToken({
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+    onboardingCompleted: user.onboardingCompleted,
+    name: user.name,
+  });
 
-  return NextResponse.json(
+  const response = NextResponse.json(
     {
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
+        image: user.image,
+        onboardingCompleted: user.onboardingCompleted,
       },
       token,
     },
     { status: 201 }
   );
+
+  response.cookies.set(AUTH_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 7,
+    path: "/",
+  });
+
+  return response;
 }

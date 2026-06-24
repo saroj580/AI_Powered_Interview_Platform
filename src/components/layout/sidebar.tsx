@@ -1,17 +1,17 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     LayoutDashboard, Video, Code2, FileText, TrendingUp, Settings,
     ChevronLeft, ChevronRight, Sparkles, LogOut, ClipboardList,
-    Users, BarChart3, Kanban
+    Users, BarChart3, Kanban, Menu, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { useAuthStore } from "@/stores/auth-store";
 
 const candidateNav = [
     { label: "Dashboard", href: "/candidate/dashboard", icon: LayoutDashboard },
@@ -29,25 +29,26 @@ const recruiterNav = [
     { label: "Reports", href: "/recruiter/reports", icon: BarChart3 },
 ];
 
-// Mock: detect role from pathname
-function useRole(pathname: string) {
-    if (pathname.startsWith("/recruiter")) return "recruiter";
-    return "candidate";
+function getInitials(name: string) {
+    return name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
 }
 
-export function DashboardSidebar() {
-    const pathname = usePathname();
-    const role = useRole(pathname);
-    const [collapsed, setCollapsed] = useState(false);
-    const navItems = role === "recruiter" ? recruiterNav : candidateNav;
+function NavContent({ collapsed, role, navItems, pathname, onLogout }: {
+    collapsed: boolean;
+    role: string;
+    navItems: typeof candidateNav;
+    pathname: string;
+    onLogout: () => void;
+}) {
+    const { user } = useAuthStore();
 
     return (
-        <aside
-            className={cn(
-                "fixed inset-y-0 left-0 z-50 flex flex-col bg-card border-r border-border transition-all duration-300 hidden lg:flex",
-                collapsed ? "w-16" : "w-64"
-            )}
-        >
+        <>
             {/* Logo */}
             <div className="flex items-center gap-3 p-4 border-b border-border h-16">
                 <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center shrink-0">
@@ -102,29 +103,119 @@ export function DashboardSidebar() {
                     </div>
                 </Link>
 
+                <button
+                    onClick={onLogout}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                >
+                    <LogOut className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span>Logout</span>}
+                </button>
+
                 <div className="flex items-center gap-3 px-3 py-2.5">
                     <Avatar className="h-8 w-8 shrink-0 ring-2 ring-primary/20">
-                        <AvatarImage src="/avatar.png" />
-                        <AvatarFallback className="bg-gradient-primary text-white text-xs">JD</AvatarFallback>
+                        <AvatarImage src={user?.image ?? undefined} />
+                        <AvatarFallback className="bg-gradient-primary text-white text-xs">
+                            {user ? getInitials(user.name) : "?"}
+                        </AvatarFallback>
                     </Avatar>
                     {!collapsed && (
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">John Doe</p>
-                            <p className="text-xs text-muted-foreground truncate">john@example.com</p>
+                            <p className="text-sm font-medium truncate">{user?.name ?? "Loading…"}</p>
+                            <p className="text-xs text-muted-foreground truncate">{user?.email ?? ""}</p>
                         </div>
                     )}
                 </div>
             </div>
+        </>
+    );
+}
 
-            {/* Collapse toggle */}
-            <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCollapsed(!collapsed)}
-                className="absolute -right-3 top-20 h-6 w-6 rounded-full border border-border bg-background shadow-md"
+export function DashboardSidebar() {
+    const pathname = usePathname();
+    const router = useRouter();
+    const { logout } = useAuthStore();
+    const [collapsed, setCollapsed] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
+
+    const role = pathname.startsWith("/recruiter") ? "recruiter" : "candidate";
+    const navItems = role === "recruiter" ? recruiterNav : candidateNav;
+
+    async function handleLogout() {
+        await logout();
+        router.push("/login");
+    }
+
+    return (
+        <>
+            {/* Mobile hamburger button */}
+            <button
+                className="lg:hidden fixed top-4 left-4 z-50 h-9 w-9 rounded-lg bg-background border border-border shadow-sm flex items-center justify-center"
+                onClick={() => setMobileOpen(true)}
             >
-                {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
-            </Button>
-        </aside>
+                <Menu className="h-4 w-4" />
+            </button>
+
+            {/* Mobile overlay */}
+            <AnimatePresence>
+                {mobileOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="lg:hidden fixed inset-0 z-40 bg-black/50"
+                            onClick={() => setMobileOpen(false)}
+                        />
+                        <motion.aside
+                            initial={{ x: -280 }}
+                            animate={{ x: 0 }}
+                            exit={{ x: -280 }}
+                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                            className="lg:hidden fixed inset-y-0 left-0 z-50 w-72 flex flex-col bg-card border-r border-border"
+                        >
+                            <button
+                                onClick={() => setMobileOpen(false)}
+                                className="absolute top-4 right-4 h-8 w-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                            <NavContent
+                                collapsed={false}
+                                role={role}
+                                navItems={navItems}
+                                pathname={pathname}
+                                onLogout={handleLogout}
+                            />
+                        </motion.aside>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* Desktop sidebar */}
+            <aside
+                className={cn(
+                    "fixed inset-y-0 left-0 z-30 flex-col bg-card border-r border-border transition-all duration-300 hidden lg:flex",
+                    collapsed ? "w-16" : "w-64"
+                )}
+            >
+                <NavContent
+                    collapsed={collapsed}
+                    role={role}
+                    navItems={navItems}
+                    pathname={pathname}
+                    onLogout={handleLogout}
+                />
+
+                {/* Collapse toggle */}
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCollapsed(!collapsed)}
+                    className="absolute -right-3 top-20 h-6 w-6 rounded-full border border-border bg-background shadow-md"
+                >
+                    {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+                </Button>
+            </aside>
+        </>
     );
 }
