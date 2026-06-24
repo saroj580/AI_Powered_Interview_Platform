@@ -222,7 +222,7 @@ export function InterviewSetupWizard() {
                         <Card>
                             <CardHeader>
                                 <CardTitle>Ready to start?</CardTitle>
-                                <CardDescription>Review your configuration before Gemini generates your questions</CardDescription>
+                                <CardDescription>Review your configuration before Groq generates your questions</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="rounded-xl bg-muted/50 p-5 space-y-3">
@@ -243,7 +243,7 @@ export function InterviewSetupWizard() {
                                 <div className="mt-5 p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-3">
                                     <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                                     <p className="text-sm text-muted-foreground">
-                                        Gemini 2.5 Pro will generate <strong className="text-foreground">{config.count} personalized questions</strong> for a <strong className="text-foreground">{config.role || "software engineering"}</strong> role at <strong className="text-foreground">{config.difficulty.toLowerCase()}</strong> difficulty.
+                                        Groq LLaMA 3.3 will generate <strong className="text-foreground">{config.count} personalized questions</strong> for a <strong className="text-foreground">{config.role || "software engineering"}</strong> role at <strong className="text-foreground">{config.difficulty.toLowerCase()}</strong> difficulty.
                                     </p>
                                 </div>
                                 {error && (

@@ -6,10 +6,10 @@
 import env from './env';
 
 export const servicesConfig = {
-  // Gemini AI Configuration
-  gemini: {
-    apiKey: env.GEMINI_API_KEY,
-    model: 'gemini-1.5-pro',
+  // Groq AI Configuration
+  groq: {
+    apiKey: env.GROQ_API_KEY,
+    model: 'llama-3.3-70b-versatile',
     temperature: 0.7,
     maxTokens: 4096,
     timeout: 30000,

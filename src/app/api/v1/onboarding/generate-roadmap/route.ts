@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // TODO: Call Gemini AI to generate personalized roadmap based on:
+  // TODO: Call Groq AI to generate personalized roadmap based on:
   // - Target role
   // - Current skills
   // - Experience level
