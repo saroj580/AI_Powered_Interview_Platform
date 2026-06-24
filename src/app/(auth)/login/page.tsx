@@ -1,12 +1,14 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { useAuthStore } from "@/stores/auth-store";
 
 function GoogleIcon() {
     return (
@@ -20,8 +22,22 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
+    const router = useRouter();
+    const { login, isLoading, error, clearError } = useAuthStore();
     const [showPassword, setShowPassword] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const emailRef = useRef<HTMLInputElement>(null);
+    const passwordRef = useRef<HTMLInputElement>(null);
+
+    async function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        clearError();
+        const email = emailRef.current?.value ?? "";
+        const password = passwordRef.current?.value ?? "";
+        const result = await login(email, password);
+        if (result.success) {
+            router.push(result.redirectTo);
+        }
+    }
 
     return (
         <motion.div
@@ -44,6 +60,7 @@ export default function LoginPage() {
                     variant="outline"
                     className="w-full h-11 border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#F8FAFC] font-medium"
                     onClick={() => {}}
+                    type="button"
                 >
                     <GoogleIcon />
                     Continue with Google
@@ -55,14 +72,14 @@ export default function LoginPage() {
                     <Separator className="flex-1 bg-[#E5E7EB]" />
                 </div>
 
-                <form
-                    className="space-y-5"
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        setLoading(true);
-                        setTimeout(() => setLoading(false), 1500);
-                    }}
-                >
+                {error && (
+                    <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        {error}
+                    </div>
+                )}
+
+                <form className="space-y-5" onSubmit={handleSubmit}>
                     <div className="space-y-2">
                         <Label htmlFor="email" className="text-sm font-medium text-[#111827]">
                             Email
@@ -71,10 +88,12 @@ export default function LoginPage() {
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B7280]" />
                             <Input
                                 id="email"
+                                ref={emailRef}
                                 type="email"
                                 placeholder="you@example.com"
                                 className="h-11 pl-10 bg-white border-[#E5E7EB] text-[#111827] placeholder:text-[#9CA3AF] focus-visible:border-[#6D28D9] focus-visible:ring-[#6D28D9]/20"
                                 required
+                                autoComplete="email"
                             />
                         </div>
                     </div>
@@ -95,10 +114,12 @@ export default function LoginPage() {
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#6B7280]" />
                             <Input
                                 id="password"
+                                ref={passwordRef}
                                 type={showPassword ? "text" : "password"}
                                 placeholder="Enter your password"
                                 className="h-11 pl-10 pr-10 bg-white border-[#E5E7EB] text-[#111827] placeholder:text-[#9CA3AF] focus-visible:border-[#6D28D9] focus-visible:ring-[#6D28D9]/20"
                                 required
+                                autoComplete="current-password"
                             />
                             <button
                                 type="button"
@@ -114,9 +135,14 @@ export default function LoginPage() {
                     <Button
                         type="submit"
                         className="w-full h-11 bg-[#6D28D9] hover:bg-[#7C3AED] text-white font-semibold"
-                        disabled={loading}
+                        disabled={isLoading}
                     >
-                        {loading ? "Signing in…" : "Sign In"}
+                        {isLoading ? (
+                            <span className="flex items-center gap-2">
+                                <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Signing in…
+                            </span>
+                        ) : "Sign In"}
                     </Button>
                 </form>
 

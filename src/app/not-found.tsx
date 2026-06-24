@@ -15,6 +15,9 @@ export default function NotFound() {
                 <Link href="/">
                     <Button className="bg-gradient-primary text-white border-0 hover:opacity-90">Go Home</Button>
                 </Link>
+
+
+                
             </div>
         </div>
     );
