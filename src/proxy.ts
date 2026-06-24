@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, AUTH_COOKIE_NAME } from '@/lib/auth';
 
 const PUBLIC_ROUTES = ['/login', '/register', '/'];
+const PUBLIC_API_PREFIXES = ['/api/v1/auth/'];
+
 const AUTH_ROUTES = ['/login', '/register'];
 
 const PROTECTED_ROUTE_PATTERNS = [
@@ -20,7 +22,7 @@ export function proxy(request: NextRequest) {
     request.cookies.get(AUTH_COOKIE_NAME)?.value ||
     request.headers.get('authorization')?.replace('Bearer ', '');
 
-  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname) || PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p));
   const isProtectedRoute = PROTECTED_ROUTE_PATTERNS.some((p) => p.test(pathname));
 
   if (!token) {

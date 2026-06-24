@@ -41,7 +41,8 @@ model User {
   updatedAt            DateTime       @updatedAt
   name                 String
   email                String         @unique
-  password             String
+  password             String?
+  googleId             String?        @unique
   image                String?
   role                 Role           @default(CANDIDATE)
   onboardingCompleted  Boolean        @default(false)
@@ -138,14 +139,16 @@ model Evaluation {
 }
 
 model CodingChallenge {
-  id               String    @id @default(uuid())
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  title            String
-  slug             String    @unique
-  difficulty       Difficulty
-  category         String
-  description      String
-  totalSubmissions Int       @default(0)
-  acceptedSubmissions Int    @default(0)
+  id                  String     @id @default(uuid())
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  title               String
+  slug                String     @unique
+  difficulty          Difficulty
+  category            String
+  pattern             String     @default("")
+  description         String
+  leetcodeId          Int?       @unique
+  totalSubmissions    Int        @default(0)
+  acceptedSubmissions Int        @default(0)
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Plus, Search, Filter, Video, Code2, MessageSquare, Mic, Layers } from "lucide-react";
@@ -7,43 +7,66 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { getScoreColor } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn, getScoreColor } from "@/lib/utils";
+import { format } from "date-fns";
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
     TECHNICAL: Code2, BEHAVIORAL: MessageSquare, CODING: Video, VOICE: Mic, MIXED: Layers,
 };
 
-const MOCK_INTERVIEWS = [
-    { id: "1", title: "Senior React Developer", type: "TECHNICAL", difficulty: "HARD", status: "COMPLETED", score: 81, date: "Jun 22, 2026", duration: "42 min" },
-    { id: "2", title: "Backend Node.js Engineer", type: "CODING", difficulty: "MEDIUM", status: "COMPLETED", score: 74, date: "Jun 19, 2026", duration: "35 min" },
-    { id: "3", title: "Full Stack Developer", type: "MIXED", difficulty: "MEDIUM", status: "COMPLETED", score: 89, date: "Jun 15, 2026", duration: "50 min" },
-    { id: "4", title: "Frontend Developer", type: "BEHAVIORAL", difficulty: "EASY", status: "COMPLETED", score: 92, date: "Jun 10, 2026", duration: "28 min" },
-    { id: "5", title: "System Design — Distributed Systems", type: "TECHNICAL", difficulty: "HARD", status: "IN_PROGRESS", score: null, date: "Today", duration: "—" },
-];
-
 const STATUS_STYLES: Record<string, string> = {
-    COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/30",
-    IN_PROGRESS: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800/30",
-    SCHEDULED: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/30",
+    COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400",
+    IN_PROGRESS: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400",
+    SCHEDULED: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400",
     DRAFT: "bg-muted text-muted-foreground border-border",
 };
 
 const DIFFICULTY_COLORS: Record<string, string> = {
-    EASY: "text-emerald-600",
-    MEDIUM: "text-amber-600",
-    HARD: "text-red-600",
+    EASY: "text-emerald-600", MEDIUM: "text-amber-600", HARD: "text-red-600",
 };
 
+interface Interview {
+    id: string;
+    title: string;
+    type: string;
+    difficulty: string;
+    status: string;
+    score: number | null;
+    createdAt: string;
+    durationMinutes: number;
+    sessionId: string | null;
+}
+
+function statusLabel(s: string) {
+    if (s === "IN_PROGRESS") return "In Progress";
+    return s.charAt(0) + s.slice(1).toLowerCase();
+}
+
 export default function InterviewsPage() {
+    const [interviews, setInterviews] = useState<Interview[]>([]);
+    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState("All");
 
-    const filtered = MOCK_INTERVIEWS.filter((i) => {
+    useEffect(() => {
+        fetch("/api/v1/interviews?limit=100")
+            .then((r) => r.json())
+            .then((d) => setInterviews(Array.isArray(d) ? d : []))
+            .catch(console.error)
+            .finally(() => setLoading(false));
+    }, []);
+
+    const filtered = interviews.filter((i) => {
         const matchSearch = i.title.toLowerCase().includes(search.toLowerCase());
         const matchFilter = filter === "All" || i.status === filter;
         return matchSearch && matchFilter;
     });
+
+    const completed = interviews.filter((i) => i.status === "COMPLETED");
+    const avgScore = completed.length > 0
+        ? Math.round(completed.reduce((a, i) => a + (i.score ?? 0), 0) / completed.filter(i => i.score !== null).length)
+        : 0;
 
     return (
         <div className="space-y-6">
@@ -54,8 +77,7 @@ export default function InterviewsPage() {
                 </div>
                 <Link href="/candidate/interviews/new">
                     <Button className="bg-gradient-primary text-white border-0 hover:opacity-90 gap-2">
-                        <Plus className="h-4 w-4" />
-                        New Interview
+                        <Plus className="h-4 w-4" /> New Interview
                     </Button>
                 </Link>
             </div>
@@ -67,57 +89,72 @@ export default function InterviewsPage() {
                     <Input placeholder="Search interviews…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
                 </div>
                 <div className="flex gap-2">
-                    {["All", "COMPLETED", "IN_PROGRESS", "SCHEDULED"].map((f) => (
-                        <Button
-                            key={f}
-                            variant={filter === f ? "default" : "outline"}
-                            size="sm"
+                    {["All", "COMPLETED", "IN_PROGRESS", "DRAFT"].map((f) => (
+                        <Button key={f} variant={filter === f ? "default" : "outline"} size="sm"
                             onClick={() => setFilter(f)}
-                            className={filter === f ? "bg-gradient-primary text-white border-0" : ""}
-                        >
-                            {f === "All" ? "All" : f === "IN_PROGRESS" ? "In Progress" : f.charAt(0) + f.slice(1).toLowerCase()}
+                            className={filter === f ? "bg-gradient-primary text-white border-0" : ""}>
+                            {f === "All" ? "All" : statusLabel(f)}
                         </Button>
                     ))}
                 </div>
             </div>
 
             {/* Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                    { label: "Total", value: MOCK_INTERVIEWS.length, color: "text-foreground" },
-                    { label: "Completed", value: MOCK_INTERVIEWS.filter(i => i.status === "COMPLETED").length, color: "text-emerald-500" },
-                    { label: "In Progress", value: MOCK_INTERVIEWS.filter(i => i.status === "IN_PROGRESS").length, color: "text-blue-500" },
-                    { label: "Avg Score", value: Math.round(MOCK_INTERVIEWS.filter(i => i.score).reduce((a, i) => a + (i.score ?? 0), 0) / MOCK_INTERVIEWS.filter(i => i.score).length) + "%", color: "text-primary" },
-                ].map((s) => (
-                    <Card key={s.label}>
-                        <CardContent className="p-4">
-                            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-                            <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+            {!loading && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {[
+                        { label: "Total", value: interviews.length, color: "text-foreground" },
+                        { label: "Completed", value: completed.length, color: "text-emerald-500" },
+                        { label: "In Progress", value: interviews.filter(i => i.status === "IN_PROGRESS").length, color: "text-blue-500" },
+                        { label: "Avg Score", value: avgScore ? `${avgScore}%` : "—", color: "text-primary" },
+                    ].map((s) => (
+                        <Card key={s.label}>
+                            <CardContent className="p-4">
+                                <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
 
             {/* Interview list */}
             <Card>
                 <CardContent className="p-0">
                     <div className="divide-y divide-border">
-                        {filtered.length === 0 ? (
+                        {loading ? (
+                            Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="flex items-center gap-4 px-5 py-4">
+                                    <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+                                    <div className="flex-1 space-y-2">
+                                        <Skeleton className="h-4 w-48" />
+                                        <Skeleton className="h-3 w-32" />
+                                    </div>
+                                </div>
+                            ))
+                        ) : filtered.length === 0 ? (
                             <div className="py-16 text-center text-muted-foreground">
                                 <Filter className="h-8 w-8 mx-auto mb-3 opacity-30" />
-                                <p className="font-medium">No interviews found</p>
-                                <p className="text-sm mt-1">Try adjusting your search or filter</p>
+                                <p className="font-medium">{interviews.length === 0 ? "No interviews yet" : "No interviews found"}</p>
+                                <p className="text-sm mt-1">{interviews.length === 0
+                                    ? "Start your first AI interview to begin tracking progress"
+                                    : "Try adjusting your search or filter"}</p>
+                                {interviews.length === 0 && (
+                                    <Link href="/candidate/interviews/new">
+                                        <Button size="sm" className="mt-4 bg-gradient-primary text-white border-0 hover:opacity-90">
+                                            <Plus className="h-4 w-4 mr-1" /> Start Interview
+                                        </Button>
+                                    </Link>
+                                )}
                             </div>
                         ) : filtered.map((interview, i) => {
                             const Icon = TYPE_ICONS[interview.type] ?? Code2;
+                            const href = interview.status === "COMPLETED"
+                                ? `/candidate/interviews/${interview.id}/report`
+                                : `/candidate/interviews/${interview.id}/session`;
                             return (
-                                <motion.div
-                                    key={interview.id}
-                                    initial={{ opacity: 0, y: 8 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.04 }}
-                                >
-                                    <Link href={interview.status === "COMPLETED" ? `/candidate/interviews/${interview.id}/report` : `/candidate/interviews/${interview.id}/session`}>
+                                <motion.div key={interview.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                                    <Link href={href}>
                                         <div className="flex items-center gap-4 px-5 py-4 hover:bg-muted/40 transition-colors group">
                                             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                                                 <Icon className="h-5 w-5 text-primary" />
@@ -125,15 +162,15 @@ export default function InterviewsPage() {
                                             <div className="flex-1 min-w-0">
                                                 <p className="font-medium text-sm group-hover:text-primary transition-colors truncate">{interview.title}</p>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-xs text-muted-foreground">{interview.date}</span>
+                                                    <span className="text-xs text-muted-foreground">{format(new Date(interview.createdAt), "MMM d, yyyy")}</span>
                                                     <span className="text-xs text-muted-foreground">·</span>
-                                                    <span className="text-xs text-muted-foreground">{interview.duration}</span>
+                                                    <span className="text-xs text-muted-foreground">{interview.durationMinutes}m</span>
                                                     <span className="text-xs text-muted-foreground">·</span>
                                                     <span className={cn("text-xs font-medium", DIFFICULTY_COLORS[interview.difficulty])}>{interview.difficulty}</span>
                                                 </div>
                                             </div>
                                             <Badge className={cn("text-xs font-medium border", STATUS_STYLES[interview.status])}>
-                                                {interview.status === "IN_PROGRESS" ? "In Progress" : interview.status.charAt(0) + interview.status.slice(1).toLowerCase()}
+                                                {statusLabel(interview.status)}
                                             </Badge>
                                             {interview.score !== null && (
                                                 <span className={`text-lg font-bold ${getScoreColor(interview.score)}`}>{interview.score}</span>
