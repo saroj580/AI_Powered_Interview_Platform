@@ -54,8 +54,9 @@ export async function GET(req: NextRequest) {
   const completionRate =
     totalInvites > 0 ? Math.round((completedInvites / totalInvites) * 100) : 0;
 
-  const candidateChange = lastMonth > 0
-    ? `+${Math.round(((thisMonth - lastMonth) / lastMonth) * 100)}% vs last month`
+  const pct = lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : null;
+  const candidateChange = pct !== null
+    ? `${pct >= 0 ? "+" : ""}${pct}% vs last month`
     : `+${thisMonth} this month`;
 
   return NextResponse.json({

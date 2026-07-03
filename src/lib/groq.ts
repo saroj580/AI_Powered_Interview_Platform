@@ -27,5 +27,6 @@ export async function groqChat(messages: Message[], opts?: { temperature?: numbe
   }
 
   const data = await res.json() as { choices: { message: { content: string } }[] };
+  if (!data.choices?.length) throw new Error("Groq returned no choices");
   return data.choices[0].message.content;
 }

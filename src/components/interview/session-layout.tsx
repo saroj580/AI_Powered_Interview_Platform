@@ -60,13 +60,18 @@ function getSpeechRecognition(): (new () => ISpeechRecognition) | null {
 
 function useSpeechRecognition(onTranscript: (text: string, isFinal: boolean) => void) {
     const recognitionRef = useRef<ISpeechRecognition | null>(null);
+    const mountedRef = useRef(true);
     const [isRecording, setIsRecording] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isSupported, setIsSupported] = useState(true);
 
     useEffect(() => {
+        mountedRef.current = true;
         if (!getSpeechRecognition()) setIsSupported(false);
-        return () => recognitionRef.current?.abort();
+        return () => {
+            mountedRef.current = false;
+            recognitionRef.current?.abort();
+        };
     }, []);
 
     const start = useCallback(() => {
@@ -85,9 +90,10 @@ function useSpeechRecognition(onTranscript: (text: string, isFinal: boolean) => 
         recognition.lang = "en-US";
         recognition.maxAlternatives = 1;
 
-        recognition.onstart = () => setIsRecording(true);
+        recognition.onstart = () => { if (mountedRef.current) setIsRecording(true); };
 
         recognition.onresult = (e: SpeechRecognitionEvent) => {
+            if (!mountedRef.current) return;
             let interim = "";
             let finalText = "";
 
@@ -105,6 +111,7 @@ function useSpeechRecognition(onTranscript: (text: string, isFinal: boolean) => 
         };
 
         recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+            if (!mountedRef.current) return;
             if (e.error === "not-allowed" || e.error === "permission-denied") {
                 setError("Microphone access denied. Please allow microphone access in your browser settings.");
             } else if (e.error === "no-speech") {
@@ -118,7 +125,7 @@ function useSpeechRecognition(onTranscript: (text: string, isFinal: boolean) => 
         };
 
         recognition.onend = () => {
-            setIsRecording(false);
+            if (mountedRef.current) setIsRecording(false);
         };
 
         try {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractToken, verifyToken, signToken, AUTH_COOKIE_NAME } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { prisma, withRetry } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
   const token = extractToken(req);
@@ -29,10 +29,12 @@ export async function POST(req: NextRequest) {
     updateData.onboardingCompleted = true;
   }
 
-  const updatedUser = await prisma.user.update({
-    where: { id: decoded.userId },
-    data: updateData,
-  });
+  const updatedUser = await withRetry(() =>
+    prisma.user.update({
+      where: { id: decoded.userId },
+      data: updateData,
+    })
+  );
 
   const newToken = signToken({
     userId: updatedUser.id,

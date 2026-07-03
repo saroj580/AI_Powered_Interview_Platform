@@ -49,6 +49,7 @@ export default function NewAssessmentPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
 
   async function generateQuestions() {
+    setQuestions([]);
     setGenerating(true);
     try {
       const res = await fetch("/api/v1/recruiter/assessments/generate-questions", {

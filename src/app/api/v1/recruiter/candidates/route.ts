@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/get-auth-user";
 import { prisma } from "@/lib/prisma";
+import type { CandidateStage } from "@prisma/client";
+
+const VALID_STAGES = new Set<string>([
+  "APPLIED",
+  "INTERVIEW_SCHEDULED",
+  "INTERVIEW_COMPLETED",
+  "SHORTLISTED",
+  "HIRED",
+  "REJECTED",
+]);
 
 export async function GET(req: NextRequest) {
   const user = getAuthUser(req);
@@ -9,13 +19,19 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = req.nextUrl;
-  const stage = searchParams.get("stage") ?? "";
+  const stageParam = searchParams.get("stage") ?? "";
   const search = searchParams.get("search") ?? "";
+
+  if (stageParam && !VALID_STAGES.has(stageParam)) {
+    return NextResponse.json({ error: "Invalid stage value" }, { status: 400 });
+  }
+
+  const stage = stageParam as CandidateStage | "";
 
   const invites = await prisma.candidateInvite.findMany({
     where: {
       assessment: { createdById: user.userId },
-      ...(stage ? { stage: stage as never } : {}),
+      ...(stage ? { stage } : {}),
       ...(search ? { email: { contains: search, mode: "insensitive" } } : {}),
     },
     orderBy: { createdAt: "desc" },

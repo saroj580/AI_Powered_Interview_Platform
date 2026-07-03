@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -50,11 +49,12 @@ export function KanbanBoard() {
       prev.map((c) => (c.id === inviteId ? { ...c, stage } : c))
     );
     try {
-      await fetch(`/api/v1/recruiter/candidates/${inviteId}`, {
+      const res = await fetch(`/api/v1/recruiter/candidates/${inviteId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stage }),
       });
+      if (!res.ok) throw new Error("Server error");
       toast.success(`Moved to ${stage.replace(/_/g, " ").toLowerCase()}`);
     } catch {
       toast.error("Failed to update stage");
@@ -105,11 +105,10 @@ export function KanbanBoard() {
                     </div>
                   )
                   : cards.map((c) => (
-                    <motion.div
+                    <div
                       key={c.id}
-                      layout
                       draggable
-                      onDragStart={(e) => onDragStart(e as unknown as React.DragEvent, c.id)}
+                      onDragStart={(e) => onDragStart(e, c.id)}
                       className={cn("cursor-grab active:cursor-grabbing", dragging === c.id && "opacity-50")}
                     >
                       <Card className="shadow-sm hover:shadow-md transition-shadow">
@@ -136,7 +135,7 @@ export function KanbanBoard() {
                           </div>
                         </CardContent>
                       </Card>
-                    </motion.div>
+                    </div>
                   ))}
               </div>
             </div>
