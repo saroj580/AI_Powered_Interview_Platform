@@ -46,7 +46,21 @@ Return ONLY valid JSON. No markdown.`;
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const expanded = JSON.parse(jsonMatch[0]);
-      return NextResponse.json({ ...challenge, expanded });
+      
+      // Validate and sanitize the expanded data to ensure all renderable fields are strings
+      const sanitized = {
+        fullDescription: typeof expanded.fullDescription === 'string' ? expanded.fullDescription : (typeof expanded.fullDescription === 'object' ? JSON.stringify(expanded.fullDescription) : String(expanded.fullDescription ?? '')),
+        examples: Array.isArray(expanded.examples) ? expanded.examples.map((ex: any) => ({
+          input: typeof ex.input === 'string' ? ex.input : (typeof ex.input === 'object' ? JSON.stringify(ex.input) : String(ex.input ?? '')),
+          output: typeof ex.output === 'string' ? ex.output : (typeof ex.output === 'object' ? JSON.stringify(ex.output) : String(ex.output ?? '')),
+          explanation: typeof ex.explanation === 'string' ? ex.explanation : (ex.explanation ? (typeof ex.explanation === 'object' ? JSON.stringify(ex.explanation) : String(ex.explanation)) : undefined),
+        })) : [],
+        constraints: Array.isArray(expanded.constraints) ? expanded.constraints.map((c: any) => typeof c === 'string' ? c : (typeof c === 'object' ? JSON.stringify(c) : String(c))) : [],
+        hints: Array.isArray(expanded.hints) ? expanded.hints.map((h: any) => typeof h === 'string' ? h : (typeof h === 'object' ? JSON.stringify(h) : String(h))) : [],
+        starterCode: typeof expanded.starterCode === 'object' && expanded.starterCode !== null ? expanded.starterCode : {},
+      };
+      
+      return NextResponse.json({ ...challenge, expanded: sanitized });
     }
   } catch {
     // Fall through — return plain challenge without expansion

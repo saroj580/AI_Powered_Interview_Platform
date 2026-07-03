@@ -51,6 +51,13 @@ const DIFFICULTY_COLOR: Record<string, string> = {
     HARD:   "text-red-600    bg-red-50    dark:bg-red-950/30    border-red-200",
 };
 
+// Helper to safely render any value as a string
+function safeString(value: unknown): string {
+    if (typeof value === 'string') return value;
+    if (value === null || value === undefined) return '';
+    return JSON.stringify(value);
+}
+
 const GENERIC_STARTER: Record<string, (title: string) => string> = {
     javascript: (t) => `/**\n * ${t}\n * @param {*} input\n * @return {*}\n */\nfunction solve(input) {\n  // your code here\n}`,
     python:     (t) => `# ${t}\ndef solve(input):\n    # your code here\n    pass`,
@@ -65,6 +72,29 @@ export function CodeEditorLayout({ slug }: { slug: string }) {
     const [running, setRunning] = useState(false);
     const [ran, setRan] = useState(false);
 
+    // Ensure challenge data is sanitized when set
+    const sanitizeChallenge = (data: Challenge): Challenge => ({
+        ...data,
+        title: typeof data.title === 'string' ? data.title : String(data.title),
+        slug: typeof data.slug === 'string' ? data.slug : String(data.slug),
+        difficulty: typeof data.difficulty === 'string' ? data.difficulty : 'MEDIUM',
+        category: typeof data.category === 'string' ? data.category : String(data.category),
+        pattern: typeof data.pattern === 'string' ? data.pattern : String(data.pattern),
+        description: typeof data.description === 'string' ? data.description : String(data.description),
+        expanded: data.expanded ? {
+            ...data.expanded,
+            fullDescription: typeof data.expanded.fullDescription === 'string' ? data.expanded.fullDescription : String(data.expanded.fullDescription ?? ''),
+            examples: Array.isArray(data.expanded.examples) ? data.expanded.examples.map(ex => ({
+                input: typeof ex.input === 'string' ? ex.input : String(ex.input),
+                output: typeof ex.output === 'string' ? ex.output : String(ex.output),
+                explanation: ex.explanation ? (typeof ex.explanation === 'string' ? ex.explanation : String(ex.explanation)) : undefined,
+            })) : [],
+            constraints: Array.isArray(data.expanded.constraints) ? data.expanded.constraints.map(c => typeof c === 'string' ? c : String(c)) : [],
+            hints: Array.isArray(data.expanded.hints) ? data.expanded.hints.map(h => typeof h === 'string' ? h : String(h)) : [],
+            starterCode: typeof data.expanded.starterCode === 'object' && data.expanded.starterCode !== null ? data.expanded.starterCode : {},
+        } : null,
+    });
+
     useEffect(() => {
         setLoading(true);
         setChallenge(null);
@@ -73,11 +103,12 @@ export function CodeEditorLayout({ slug }: { slug: string }) {
         fetch(`/api/v1/coding/challenges/${slug}`)
             .then((r) => r.json())
             .then((data: Challenge) => {
-                setChallenge(data);
+                const sanitized = sanitizeChallenge(data);
+                setChallenge(sanitized);
                 // Set initial code from expanded starter code or generic template
                 const starter =
-                    data.expanded?.starterCode?.[language] ??
-                    GENERIC_STARTER[language](data.title);
+                    sanitized.expanded?.starterCode?.[language] ??
+                    GENERIC_STARTER[language](sanitized.title);
                 setCode(starter);
             })
             .catch(console.error)
@@ -162,15 +193,15 @@ export function CodeEditorLayout({ slug }: { slug: string }) {
                             #{challenge.leetcodeId}
                         </span>
                     )}
-                    <span className="font-semibold text-sm truncate">{challenge.title}</span>
+                    <span className="font-semibold text-sm truncate">{safeString(challenge.title)}</span>
                     <Badge className={cn("text-[10px] shrink-0 border", DIFFICULTY_COLOR[challenge.difficulty])}>
-                        {challenge.difficulty}
+                        {safeString(challenge.difficulty)}
                     </Badge>
                     <Badge variant="outline" className="text-[10px] hidden sm:flex shrink-0">
-                        {challenge.pattern}
+                        {safeString(challenge.pattern)}
                     </Badge>
                 </div>
-                <Select value={language} onValueChange={(v) => v && handleLanguageChange(v)}>
+                <Select value={safeString(language)} onValueChange={(v) => v && handleLanguageChange(v)}>
                     <SelectTrigger className="w-36 h-8 text-xs">
                         <SelectValue />
                     </SelectTrigger>
@@ -202,7 +233,7 @@ export function CodeEditorLayout({ slug }: { slug: string }) {
                         <TabsContent value="problem" className="space-y-4 text-sm">
                             {/* Description */}
                             <p className="leading-relaxed text-foreground/90">
-                                {ex?.fullDescription ?? challenge.description}
+                                {safeString(ex?.fullDescription ?? challenge.description)}
                             </p>
 
                             {/* Examples */}
@@ -211,10 +242,10 @@ export function CodeEditorLayout({ slug }: { slug: string }) {
                                     <p className="font-semibold">Examples:</p>
                                     {ex.examples.map((e, i) => (
                                         <div key={i} className="bg-muted/50 rounded-lg p-3 font-mono text-xs space-y-1">
-                                            <p><span className="text-muted-foreground">Input: </span>{e.input}</p>
-                                            <p><span className="text-muted-foreground">Output: </span>{e.output}</p>
+                                            <p><span className="text-muted-foreground">Input: </span>{safeString(e.input)}</p>
+                                            <p><span className="text-muted-foreground">Output: </span>{safeString(e.output)}</p>
                                             {e.explanation && (
-                                                <p><span className="text-muted-foreground">Explanation: </span>{e.explanation}</p>
+                                                <p><span className="text-muted-foreground">Explanation: </span>{safeString(e.explanation)}</p>
                                             )}
                                         </div>
                                     ))}
@@ -227,7 +258,7 @@ export function CodeEditorLayout({ slug }: { slug: string }) {
                                     <p className="font-semibold mb-2">Constraints:</p>
                                     <ul className="space-y-1 text-muted-foreground text-xs font-mono list-disc list-inside">
                                         {ex.constraints.map((c, i) => (
-                                            <li key={i}>{c}</li>
+                                            <li key={i}>{safeString(c)}</li>
                                         ))}
                                     </ul>
                                 </div>
@@ -236,8 +267,8 @@ export function CodeEditorLayout({ slug }: { slug: string }) {
                             {/* Pattern tag */}
                             <div className="pt-2 flex flex-wrap gap-1.5">
                                 <span className="text-xs text-muted-foreground">Pattern:</span>
-                                <Badge variant="secondary" className="text-xs">{challenge.pattern}</Badge>
-                                <Badge variant="secondary" className="text-xs">{challenge.category}</Badge>
+                                <Badge variant="secondary" className="text-xs">{safeString(challenge.pattern)}</Badge>
+                                <Badge variant="secondary" className="text-xs">{safeString(challenge.category)}</Badge>
                             </div>
                         </TabsContent>
 
@@ -246,7 +277,7 @@ export function CodeEditorLayout({ slug }: { slug: string }) {
                                 ex.hints.map((h, i) => (
                                     <div key={i} className="flex gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800/30">
                                         <Lightbulb className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                                        <p className="text-sm text-amber-800 dark:text-amber-300">{h}</p>
+                                        <p className="text-sm text-amber-800 dark:text-amber-300">{safeString(h)}</p>
                                     </div>
                                 ))
                             ) : (
@@ -294,9 +325,9 @@ export function CodeEditorLayout({ slug }: { slug: string }) {
                                 >
                                     <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                                     <span className="font-mono text-muted-foreground truncate">
-                                        Input: {e.input}
+                                        Input: {safeString(e.input)}
                                     </span>
-                                    <span className="font-mono shrink-0">→ {e.output}</span>
+                                    <span className="font-mono shrink-0">→ {safeString(e.output)}</span>
                                 </div>
                             )) ?? (
                                 <div className="flex items-center gap-3 text-xs p-2 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20">
