@@ -13,6 +13,15 @@ enum Role {
   CANDIDATE
 }
 
+enum CandidateStage {
+  APPLIED
+  INTERVIEW_SCHEDULED
+  INTERVIEW_COMPLETED
+  SHORTLISTED
+  HIRED
+  REJECTED
+}
+
 enum InterviewType {
   TECHNICAL
   BEHAVIORAL
@@ -48,10 +57,12 @@ model User {
   onboardingCompleted  Boolean        @default(false)
   organization         Organization?  @relation(fields: [organizationId], references: [id])
   organizationId       String?
-  interviews           Interview[]    @relation("InterviewCreator")
+  interviews           Interview[]       @relation("InterviewCreator")
   resumes              Resume[]
   sessions             Session[]
   evaluations          Evaluation[]
+  assessments          Assessment[]      @relation("AssessmentCreator")
+  invites              CandidateInvite[] @relation("InvitedCandidate")
 }
 
 model Organization {
@@ -151,4 +162,53 @@ model CodingChallenge {
   leetcodeId          Int?       @unique
   totalSubmissions    Int        @default(0)
   acceptedSubmissions Int        @default(0)
+}
+
+model Assessment {
+  id              String            @id @default(uuid())
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  title           String
+  type            InterviewType     @default(TECHNICAL)
+  difficulty      Difficulty        @default(MEDIUM)
+  targetRole      String
+  questionCount   Int               @default(5)
+  durationMinutes Int               @default(30)
+  questions       Json              @default("[]")
+  isActive        Boolean           @default(true)
+  createdBy       User              @relation("AssessmentCreator", fields: [createdById], references: [id])
+  createdById     String
+  invites         CandidateInvite[]
+}
+
+model CandidateInvite {
+  id            String             @id @default(uuid())
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  assessment    Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  assessmentId  String
+  email         String
+  candidate     User?              @relation("InvitedCandidate", fields: [candidateId], references: [id])
+  candidateId   String?
+  stage         CandidateStage     @default(APPLIED)
+  token         String             @unique @default(uuid())
+  completedAt   DateTime?
+  score         Float?
+  notes         String?
+  session       AssessmentSession?
+
+  @@unique([assessmentId, email])
+}
+
+model AssessmentSession {
+  id           String          @id @default(uuid())
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  invite       CandidateInvite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  inviteId     String          @unique
+  startedAt    DateTime?
+  endedAt      DateTime?
+  score        Float?
+  answers      Json            @default("[]")
+  aiEvaluation Json?
 }

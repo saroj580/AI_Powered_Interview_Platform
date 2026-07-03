@@ -60,6 +60,9 @@ export function proxy(request: NextRequest) {
   if (pathname.startsWith('/recruiter') && decoded.role !== 'RECRUITER') {
     return NextResponse.redirect(new URL('/candidate/dashboard', request.url));
   }
+  if (pathname.startsWith('/candidate') && decoded.role === 'RECRUITER') {
+    return NextResponse.redirect(new URL('/recruiter/dashboard', request.url));
+  }
   if (pathname.startsWith('/admin') && decoded.role !== 'ADMIN') {
     return NextResponse.redirect(new URL('/candidate/dashboard', request.url));
   }
