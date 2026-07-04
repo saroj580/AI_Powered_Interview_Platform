@@ -182,6 +182,34 @@ export function InterviewSession({ interviewId }: { interviewId: string }) {
     if (!code.trim() || isRunning) return;
     setIsRunning(true);
     setRunOutput(null);
+
+    // JavaScript executes client-side — no external API needed
+    if (language === "javascript") {
+      const logs: string[] = [];
+      const errs: string[] = [];
+      const origLog = console.log;
+      const origError = console.error;
+      const origWarn = console.warn;
+      console.log = (...a: unknown[]) => logs.push(a.map(String).join(" "));
+      console.error = (...a: unknown[]) => errs.push(a.map(String).join(" "));
+      console.warn = (...a: unknown[]) => errs.push("[warn] " + a.map(String).join(" "));
+      try {
+        // AsyncFunction lets the candidate use await at the top level
+        const AsyncFn = Object.getPrototypeOf(async function () {}).constructor as new (...args: string[]) => () => Promise<void>;
+        await new AsyncFn(code)();
+        setRunOutput({ stdout: logs.join("\n"), stderr: errs.join("\n"), exitCode: 0 });
+      } catch (e) {
+        setRunOutput({ stdout: logs.join("\n"), stderr: String(e), exitCode: 1 });
+      } finally {
+        console.log = origLog;
+        console.error = origError;
+        console.warn = origWarn;
+        setIsRunning(false);
+      }
+      return;
+    }
+
+    // Python / Java — server-side via Wandbox
     try {
       const res = await fetch("/api/v1/code/run", {
         method: "POST",
