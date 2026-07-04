@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import dynamic from "next/dynamic";
 import {
   ChevronRight, ChevronLeft, Mic, MicOff, Timer, Sparkles, AlertCircle,
-  StopCircle, Loader2, CheckCircle2, Code2
+  StopCircle, Loader2, CheckCircle2, Code2, Play, Terminal, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -173,6 +173,33 @@ export function InterviewSession({ interviewId }: { interviewId: string }) {
 
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Code execution
+  const [runOutput, setRunOutput] = useState<{ stdout: string; stderr: string; exitCode: number } | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+
+  async function runCode(code: string, language: string) {
+    if (!code.trim() || isRunning) return;
+    setIsRunning(true);
+    setRunOutput(null);
+    try {
+      const res = await fetch("/api/v1/code/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, language }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setRunOutput({ stdout: "", stderr: data.error, exitCode: 1 });
+      } else {
+        setRunOutput({ stdout: data.output ?? "", stderr: data.stderr ?? "", exitCode: data.exitCode ?? 0 });
+      }
+    } catch {
+      setRunOutput({ stdout: "", stderr: "Network error — could not reach execution server.", exitCode: 1 });
+    } finally {
+      setIsRunning(false);
+    }
+  }
 
   const handleTranscript = useCallback((text: string, isFinal: boolean) => {
     if (isFinal) {
@@ -399,21 +426,41 @@ export function InterviewSession({ interviewId }: { interviewId: string }) {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center gap-1">
-                  {questions.map((_, qi) => {
-                    const ans = textAnswers[qi]?.trim().length > 0;
-                    return (
-                      <button key={qi} onClick={() => setIdx(qi)} className={cn(
-                        "h-2 w-2 rounded-full transition-all",
-                        qi === idx ? "bg-primary w-4" : ans ? "bg-primary/40" : "bg-white/20"
-                      )} />
-                    );
-                  })}
+                <div className="flex items-center gap-3">
+                  {/* Problem dots */}
+                  <div className="flex items-center gap-1">
+                    {questions.map((_, qi) => {
+                      const ans = textAnswers[qi]?.trim().length > 0;
+                      return (
+                        <button key={qi} onClick={() => setIdx(qi)} className={cn(
+                          "h-2 w-2 rounded-full transition-all",
+                          qi === idx ? "bg-primary w-4" : ans ? "bg-primary/40" : "bg-white/20"
+                        )} />
+                      );
+                    })}
+                  </div>
+                  {/* Run button */}
+                  <button
+                    onClick={() => runCode(displayCode, codeLanguage)}
+                    disabled={isRunning || !displayCode.trim()}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold transition-all",
+                      isRunning || !displayCode.trim()
+                        ? "bg-white/10 text-white/30 cursor-not-allowed"
+                        : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                    )}
+                  >
+                    {isRunning ? (
+                      <><Loader2 className="h-3 w-3 animate-spin" />Running…</>
+                    ) : (
+                      <><Play className="h-3 w-3" />Run</>
+                    )}
+                  </button>
                 </div>
               </div>
 
-              {/* Monaco editor fills remaining height */}
-              <div className="flex-1 min-h-0">
+              {/* Monaco editor — shrinks when output panel is open */}
+              <div className={cn("min-h-0 transition-all", runOutput ? "flex-[3]" : "flex-1")}>
                 <MonacoEditor
                   height="100%"
                   language={codeLanguage}
@@ -424,8 +471,48 @@ export function InterviewSession({ interviewId }: { interviewId: string }) {
                 />
               </div>
 
+              {/* Output panel — shown after Run */}
+              {runOutput && (
+                <div className="flex-[1] min-h-0 border-t border-white/10 bg-[#0d1117] flex flex-col" style={{ maxHeight: 200 }}>
+                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/10 bg-[#161b22] shrink-0">
+                    <div className="flex items-center gap-1.5">
+                      <Terminal className="h-3 w-3 text-white/50" />
+                      <span className="text-xs text-white/50 font-mono">output</span>
+                      {runOutput.exitCode !== 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-900/50 text-red-400 font-mono">
+                          exit {runOutput.exitCode}
+                        </span>
+                      )}
+                      {runOutput.exitCode === 0 && runOutput.stdout && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/50 text-emerald-400 font-mono">
+                          success
+                        </span>
+                      )}
+                    </div>
+                    <button onClick={() => setRunOutput(null)} className="text-white/30 hover:text-white/60 transition-colors">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-3 py-2">
+                    {runOutput.stdout && (
+                      <pre className="text-xs text-emerald-300 font-mono whitespace-pre-wrap leading-relaxed">
+                        {runOutput.stdout}
+                      </pre>
+                    )}
+                    {runOutput.stderr && (
+                      <pre className="text-xs text-red-400 font-mono whitespace-pre-wrap leading-relaxed">
+                        {runOutput.stderr}
+                      </pre>
+                    )}
+                    {!runOutput.stdout && !runOutput.stderr && (
+                      <p className="text-xs text-white/30 font-mono italic">No output</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Submit bar */}
-              <div className="flex items-center justify-between px-4 py-3 border-t border-white/10 bg-[#252526]">
+              <div className="flex items-center justify-between px-4 py-3 border-t border-white/10 bg-[#252526] shrink-0">
                 <span className="text-xs text-white/40 font-mono">
                   {textAnswers[idx]?.trim() ? `${textAnswers[idx].split("\n").length} lines` : "No code yet"}
                 </span>
