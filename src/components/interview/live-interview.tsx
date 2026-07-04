@@ -183,6 +183,8 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
   const lastSpokenId = useRef("");
   const mutedRef = useRef(false);
   const statusRef = useRef<CallStatus>("loading");
+  const transcriptRef = useRef("");       // always in sync with transcript state
+  const intentionalStopRef = useRef(false); // true when user explicitly stops mic
 
   useEffect(() => { mutedRef.current = muted; }, [muted]);
   useEffect(() => { statusRef.current = status; }, [status]);
@@ -314,11 +316,14 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
   // ── Send message ────────────────────────────────────────────────────────────
 
   const handleSend = useCallback(async (overrideText?: string) => {
-    const text = (overrideText ?? (transcript + " " + interimText + " " + textInput)).trim();
+    // Use transcriptRef so we get the full accumulated voice text even mid-SR-session
+    const voiceText = transcriptRef.current || transcript;
+    const text = (overrideText ?? (voiceText + " " + interimText + " " + textInput)).trim();
     if (!text || status === "thinking" || isComplete) return;
 
     stopRecording();
     window.speechSynthesis?.cancel();
+    transcriptRef.current = "";
 
     const candidateMsg: LiveMessage = { id: crypto.randomUUID(), role: "candidate", content: text };
     const newHistory = [...messages, candidateMsg];
@@ -331,37 +336,76 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
   }, [transcript, interimText, textInput, status, isComplete, messages, observations, stage, questionIndex, sendTurn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Voice ────────────────────────────────────────────────────────────────────
+  // Web Speech API auto-stops after silence even with continuous:true on most
+  // browsers. We restart it immediately (new instance each time) so the user
+  // can speak a full paragraph without the mic cutting out.
 
-  function startRecording() {
+  function createAndStartSR(accumulated: string) {
     const SR = getSR();
-    if (!SR || status === "thinking" || status === "loading") return;
-    window.speechSynthesis?.cancel();
-    setStatus("listening");
-    setTranscript("");
-    setInterimText("");
+    if (!SR) return;
 
     const sr = new SR();
     sr.continuous = true;
     sr.interimResults = true;
     sr.lang = "en-US";
+    sr.maxAlternatives = 1;
+
     sr.onresult = (e: SREvent) => {
       let interim = "";
-      let final = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) final += t;
-        else interim += t;
+        if (e.results[i].isFinal) {
+          accumulated = (accumulated + " " + t).trim();
+          transcriptRef.current = accumulated;
+          setTranscript(accumulated);
+        } else {
+          interim += t;
+        }
       }
-      if (final) setTranscript(prev => (prev + " " + final).trim());
       setInterimText(interim);
     };
-    sr.onerror = () => { setInterimText(""); if (statusRef.current === "listening") setStatus("idle"); };
-    sr.onend = () => { setInterimText(""); if (statusRef.current === "listening") setStatus("idle"); };
-    srRef.current = sr;
-    sr.start();
+
+    sr.onerror = (e: Event) => {
+      const code = (e as { error?: string }).error ?? "";
+      // "no-speech" just means silence — let onend handle the restart
+      if (code === "no-speech" || code === "aborted") return;
+      setInterimText("");
+      if (statusRef.current === "listening") setStatus("idle");
+    };
+
+    sr.onend = () => {
+      setInterimText("");
+      if (!intentionalStopRef.current && statusRef.current === "listening") {
+        // Auto-stopped due to silence — restart immediately to keep listening
+        setTimeout(() => {
+          if (!intentionalStopRef.current && statusRef.current === "listening") {
+            createAndStartSR(transcriptRef.current);
+          }
+        }, 120);
+      }
+    };
+
+    try {
+      srRef.current = sr;
+      sr.start();
+    } catch {
+      setStatus("idle");
+    }
+  }
+
+  function startRecording() {
+    if (status === "thinking" || status === "loading") return;
+    window.speechSynthesis?.cancel();
+    intentionalStopRef.current = false;
+    transcriptRef.current = "";
+    setTranscript("");
+    setInterimText("");
+    setStatus("listening");
+    createAndStartSR("");
   }
 
   function stopRecording() {
+    intentionalStopRef.current = true;
     srRef.current?.stop();
     srRef.current = null;
     setInterimText("");
