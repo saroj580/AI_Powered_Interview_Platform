@@ -61,7 +61,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!interview) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const { answers } = await req.json() as {
-      answers: Array<{ question: string; answer: string; correct?: boolean }>
+      answers: Array<{
+        question: string;
+        answer: string;
+        correct?: boolean;
+        correctAnswer?: string;
+        explanation?: string;
+      }>
     };
 
     const isMCQ = interview.type !== "CODING" && interview.type !== "VOICE";
@@ -111,6 +117,14 @@ Be specific — reference actual questions and answers in your feedback, not gen
       data: { status: "COMPLETED", totalScore: evaluation.scores.overall },
     });
 
+    const questionsReview = answers.map((a) => ({
+      question: a.question,
+      userAnswer: a.answer,
+      isCorrect: a.correct,
+      correctAnswer: a.correctAnswer,
+      explanation: a.explanation,
+    }));
+
     return NextResponse.json({
       evaluation,
       meta: {
@@ -122,6 +136,7 @@ Be specific — reference actual questions and answers in your feedback, not gen
         answeredCount: answered.length,
         durationMinutes: interview.durationMinutes,
       },
+      questionsReview,
     });
   } catch (err) {
     console.error("[interview/submit]", err);

@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import dynamic from "next/dynamic";
 import {
   ChevronRight, ChevronLeft, Mic, MicOff, Timer, Sparkles, AlertCircle,
-  StopCircle, Loader2, CheckCircle2, XCircle, Code2
+  StopCircle, Loader2, CheckCircle2, Code2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -244,6 +244,8 @@ export function InterviewSession({ interviewId }: { interviewId: string }) {
           question: m.question,
           answer: sel >= 0 ? m.options[sel] : "No answer",
           correct: sel === m.correct,
+          correctAnswer: m.options[m.correct],
+          explanation: m.explanation,
         };
       } else if (q.type === "VOICE") {
         const v = q as VoiceQuestion;
