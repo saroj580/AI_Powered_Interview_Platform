@@ -4,11 +4,14 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
-  Mic, MicOff, PhoneOff, BrainCircuit, Timer,
-  Loader2, AlertCircle, Volume2, VolumeX, Send,
+  Mic, PhoneOff, BrainCircuit, Timer, Loader2, AlertCircle,
+  Volume2, VolumeX, Send, ArrowLeft, Settings, CheckCircle2,
+  Briefcase, Clock, Users, Hash, Globe, Lock,
+  Code2, Lightbulb, MessageSquare, Zap, LayoutList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -78,80 +81,67 @@ function useElapsed() {
   return `${Math.floor(secs / 60).toString().padStart(2, "0")}:${(secs % 60).toString().padStart(2, "0")}`;
 }
 
-// ── Avatar with animated rings ────────────────────────────────────────────────
+// ── Stage tracker ─────────────────────────────────────────────────────────────
 
-function AvatarRings({ status }: { status: CallStatus }) {
-  const isSpeaking = status === "speaking";
-  const isListening = status === "listening";
-  const isThinking = status === "thinking" || status === "loading";
-  const active = isSpeaking || isListening;
+const STAGES = [
+  { id: "intro",          label: "Introduction" },
+  { id: "technical",      label: "Technical" },
+  { id: "problem_solving",label: "Problem Solving" },
+  { id: "system_design",  label: "System Design" },
+  { id: "behavioral",     label: "Behavioral" },
+  { id: "closing",        label: "Closing" },
+];
 
-  const ringColor = isListening ? "border-emerald-400" : "border-violet-400";
+function getStageIndex(stage: string): number {
+  if (["welcome", "intro", "readiness"].includes(stage)) return 0;
+  if (["technical", "depth", "followup"].includes(stage)) return 1;
+  if (["problem_solving", "problem"].includes(stage)) return 2;
+  if (["system_design", "design"].includes(stage)) return 3;
+  if (stage === "behavioral") return 4;
+  if (["closing", "complete"].includes(stage)) return 5;
+  return 0;
+}
 
+// ── Static content ────────────────────────────────────────────────────────────
+
+const TIPS = [
+  "Speak clearly and at a normal pace",
+  "It's okay to take a moment to think",
+  "Explain your thought process",
+  "Ask for clarification if needed",
+  "Be honest and confident",
+];
+
+const EVAL_FACTORS = [
+  { icon: Code2,        label: "Technical Knowledge" },
+  { icon: Lightbulb,   label: "Problem Solving" },
+  { icon: MessageSquare, label: "Communication" },
+  { icon: Zap,          label: "Confidence" },
+  { icon: LayoutList,   label: "Clarity & Structure" },
+];
+
+// ── Waveform animation ────────────────────────────────────────────────────────
+
+const WAVEFORM = [
+  { h: 6,  d: 0.80 }, { h: 10, d: 0.90 }, { h: 16, d: 0.75 }, { h: 24, d: 1.00 },
+  { h: 36, d: 0.85 }, { h: 28, d: 0.95 }, { h: 20, d: 0.80 }, { h: 32, d: 1.10 },
+  { h: 40, d: 0.70 }, { h: 28, d: 0.90 }, { h: 18, d: 0.85 }, { h: 30, d: 0.75 },
+  { h: 22, d: 1.00 }, { h: 14, d: 0.80 }, { h: 8,  d: 0.95 }, { h: 16, d: 0.90 },
+  { h: 26, d: 0.80 }, { h: 20, d: 0.70 }, { h: 12, d: 0.85 }, { h: 6,  d: 0.80 },
+];
+
+function WaveformBars({ active }: { active: boolean }) {
   return (
-    <div className="relative flex items-center justify-center" style={{ width: 240, height: 240 }}>
-      {/* Outer ring */}
-      <motion.div
-        className={cn("absolute rounded-full border-2", ringColor, "opacity-20")}
-        style={{ width: 240, height: 240 }}
-        animate={active ? { scale: [1, 1.09, 1], opacity: [0.15, 0.4, 0.15] } : { scale: 1, opacity: 0.15 }}
-        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-      />
-      {/* Middle ring */}
-      <motion.div
-        className={cn("absolute rounded-full border-2", ringColor, "opacity-30")}
-        style={{ width: 195, height: 195 }}
-        animate={
-          active
-            ? { scale: [1, 1.07, 1], opacity: [0.25, 0.55, 0.25] }
-            : isThinking
-            ? { scale: [1, 1.03, 1], opacity: [0.15, 0.3, 0.15] }
-            : { scale: 1, opacity: 0.2 }
-        }
-        transition={{ duration: active ? 1.6 : 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
-      />
-      {/* Inner circle */}
-      <motion.div
-        className={cn(
-          "relative flex items-center justify-center rounded-full shadow-2xl",
-          isListening
-            ? "bg-gradient-to-br from-emerald-600 to-emerald-800"
-            : isSpeaking
-            ? "bg-gradient-to-br from-violet-600 to-violet-900"
-            : "bg-gradient-to-br from-slate-700 to-slate-900",
-        )}
-        style={{ width: 150, height: 150 }}
-        animate={isThinking ? { scale: [1, 1.03, 1] } : {}}
-        transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <BrainCircuit className="h-16 w-16 text-white/90" />
-
-        {/* Sound bars when AI speaking */}
-        {isSpeaking && (
-          <div className="absolute bottom-7 flex items-end gap-1">
-            {[4, 7, 11, 7, 4].map((h, i) => (
-              <motion.div
-                key={i}
-                className="w-1.5 bg-white/60 rounded-full"
-                animate={{ height: [h, h * 2.8, h] }}
-                transition={{ duration: 0.45, repeat: Infinity, delay: i * 0.08, ease: "easeInOut" }}
-                style={{ height: h }}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Mic icon overlay when listening */}
-        {isListening && (
-          <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="absolute bottom-6"
-          >
-            <Mic className="h-6 w-6 text-white/80" />
-          </motion.div>
-        )}
-      </motion.div>
+    <div className="flex items-center justify-center gap-0.5 h-12 w-full">
+      {WAVEFORM.map((bar, i) => (
+        <motion.div
+          key={i}
+          className="w-1 rounded-full bg-primary"
+          animate={active ? { height: [bar.h * 0.4, bar.h, bar.h * 0.5, bar.h * 0.8, bar.h * 0.4] } : { height: 4 }}
+          transition={{ duration: bar.d, repeat: active ? Infinity : 0, delay: i * 0.04, ease: "easeInOut" }}
+          style={{ height: bar.h * 0.4 }}
+        />
+      ))}
     </div>
   );
 }
@@ -178,16 +168,26 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
   const [showEndDialog, setShowEndDialog] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInput, setTextInput] = useState("");
+  const [recordingSecs, setRecordingSecs] = useState(0);
 
   const srRef = useRef<ISR | null>(null);
   const lastSpokenId = useRef("");
   const mutedRef = useRef(false);
   const statusRef = useRef<CallStatus>("loading");
-  const transcriptRef = useRef("");       // always in sync with transcript state
-  const intentionalStopRef = useRef(false); // true when user explicitly stops mic
+  const transcriptRef = useRef("");
+  const intentionalStopRef = useRef(false);
 
   useEffect(() => { mutedRef.current = muted; }, [muted]);
   useEffect(() => { statusRef.current = status; }, [status]);
+
+  // Recording timer
+  useEffect(() => {
+    if (status !== "listening") { setRecordingSecs(0); return; }
+    const t = setInterval(() => setRecordingSecs(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [status]);
+
+  const recordingTimer = `${Math.floor(recordingSecs / 60).toString().padStart(2, "0")}:${(recordingSecs % 60).toString().padStart(2, "0")}`;
 
   // ── Text-to-speech ──────────────────────────────────────────────────────────
 
@@ -195,9 +195,7 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
     if (mutedRef.current || typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 0.9;
-    utt.pitch = 1.0;
-    utt.volume = 1;
+    utt.rate = 0.9; utt.pitch = 1.0; utt.volume = 1;
     const voice = getBestVoice();
     if (voice) utt.voice = voice;
     utt.onstart = () => setStatus("speaking");
@@ -206,7 +204,6 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
     window.speechSynthesis.speak(utt);
   }, []);
 
-  // Speak new AI messages automatically
   useEffect(() => {
     if (messages.length === 0) return;
     const last = messages[messages.length - 1];
@@ -217,10 +214,9 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
     }
   }, [messages, speak]);
 
-  // Load voices asynchronously (Chrome fires voiceschanged)
   useEffect(() => {
     if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = () => { /* voices now ready */ };
+      window.speechSynthesis.onvoiceschanged = () => {};
     }
   }, []);
 
@@ -243,7 +239,7 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interviewId]);
 
-  // ── API call ────────────────────────────────────────────────────────────────
+  // ── API turn ────────────────────────────────────────────────────────────────
 
   const sendTurn = useCallback(async (
     currentHistory: LiveMessage[],
@@ -313,10 +309,9 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
     }
   }, [interviewId, router]);
 
-  // ── Send message ────────────────────────────────────────────────────────────
+  // ── Send ────────────────────────────────────────────────────────────────────
 
   const handleSend = useCallback(async (overrideText?: string) => {
-    // Use transcriptRef so we get the full accumulated voice text even mid-SR-session
     const voiceText = transcriptRef.current || transcript;
     const text = (overrideText ?? (voiceText + " " + interimText + " " + textInput)).trim();
     if (!text || status === "thinking" || isComplete) return;
@@ -335,10 +330,7 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
     await sendTurn(newHistory, observations, stage, questionIndex);
   }, [transcript, interimText, textInput, status, isComplete, messages, observations, stage, questionIndex, sendTurn]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Voice ────────────────────────────────────────────────────────────────────
-  // Web Speech API auto-stops after silence even with continuous:true on most
-  // browsers. We restart it immediately (new instance each time) so the user
-  // can speak a full paragraph without the mic cutting out.
+  // ── Voice (auto-restart on silence) ─────────────────────────────────────────
 
   function createAndStartSR(accumulated: string) {
     const SR = getSR();
@@ -367,7 +359,6 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
 
     sr.onerror = (e: Event) => {
       const code = (e as { error?: string }).error ?? "";
-      // "no-speech" just means silence — let onend handle the restart
       if (code === "no-speech" || code === "aborted") return;
       setInterimText("");
       if (statusRef.current === "listening") setStatus("idle");
@@ -376,7 +367,6 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
     sr.onend = () => {
       setInterimText("");
       if (!intentionalStopRef.current && statusRef.current === "listening") {
-        // Auto-stopped due to silence — restart immediately to keep listening
         setTimeout(() => {
           if (!intentionalStopRef.current && statusRef.current === "listening") {
             createAndStartSR(transcriptRef.current);
@@ -412,11 +402,6 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
     if (statusRef.current === "listening") setStatus("idle");
   }
 
-  function toggleMic() {
-    if (status === "listening") stopRecording();
-    else startRecording();
-  }
-
   async function handleEndEarly() {
     setShowEndDialog(false);
     stopRecording();
@@ -427,7 +412,7 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
     await generateReport(finalHistory, observations);
   }
 
-  // ── Loading / error screens ─────────────────────────────────────────────────
+  // ── Error / generating screens ──────────────────────────────────────────────
 
   if (loadError) {
     return (
@@ -440,17 +425,17 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
 
   if (isGeneratingReport) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-6 bg-slate-950">
+      <div className="flex flex-col items-center justify-center min-h-[80vh] gap-6">
         <motion.div
-          className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center"
+          className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center"
           animate={{ scale: [1, 1.12, 1] }}
           transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
         >
-          <BrainCircuit className="h-12 w-12 text-primary" />
+          <BrainCircuit className="h-10 w-10 text-primary" />
         </motion.div>
         <div className="text-center">
-          <p className="font-bold text-2xl text-white">Analysing your interview…</p>
-          <p className="text-slate-400 text-sm mt-2">Generating your full report — about 15 seconds</p>
+          <p className="font-bold text-xl">Analysing your interview…</p>
+          <p className="text-muted-foreground text-sm mt-1">Generating your full report — about 15 seconds</p>
         </div>
         <Loader2 className="h-5 w-5 text-primary animate-spin" />
       </div>
@@ -464,292 +449,402 @@ export function LiveInterview({ interviewId }: { interviewId: string }) {
   const srSupported = !!getSR();
   const isRecording = status === "listening";
   const canSend = !!(transcript + interimText + textInput).trim() && status !== "thinking" && !isComplete;
-
-  const statusLabel: Record<CallStatus, string> = {
-    loading: "Connecting…",
-    speaking: "Alex is speaking",
-    thinking: "Thinking…",
-    listening: "Listening…",
-    idle: (transcript || textInput) ? "Ready to send" : "Your turn",
-    complete: "Interview complete",
-  };
-
-  const statusColor: Record<CallStatus, string> = {
-    loading:   "text-slate-400",
-    speaking:  "text-violet-400",
-    thinking:  "text-amber-400",
-    listening: "text-emerald-400",
-    idle:      "text-slate-400",
-    complete:  "text-primary",
-  };
+  const currentStageIdx = getStageIndex(stage);
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-64px)] bg-gradient-to-b from-slate-950 via-[#0d0d1a] to-slate-950 text-white select-none">
+    <div className="flex flex-col h-[calc(100vh-64px)]">
 
-      {/* ── Top bar ── */}
-      <div className="flex items-center justify-between px-6 py-4 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="h-2 w-2 bg-emerald-400 rounded-full animate-pulse" />
-          <span className="text-sm font-semibold text-slate-200">Live Interview</span>
-          {interview && (
-            <Badge variant="outline" className="border-slate-700 text-slate-400 text-xs hidden sm:flex">
-              {interview.targetRole} · {interview.difficulty}
-            </Badge>
-          )}
+      {/* ── Header ── */}
+      <div className="border-b bg-card/80 backdrop-blur px-5 py-3 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Interviews
+          </button>
+          <div className="h-4 w-px bg-border" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-bold">Live Interview</h1>
+              <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-[11px] font-medium px-2 py-0">
+                <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full mr-1.5 inline-block animate-pulse" />
+                Live
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground hidden sm:block">
+              AI is interviewing you. Answer out loud and have a conversation.
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          {targetQ > 0 && (
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="w-24 h-1 bg-slate-800 rounded-full overflow-hidden">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowEndDialog(true)}
+            className="text-destructive border-destructive/30 hover:bg-destructive/5 text-xs"
+          >
+            <PhoneOff className="h-3.5 w-3.5 mr-1.5" />
+            End Interview
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+            <Settings className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Body: main + sidebar ── */}
+      <div className="flex-1 flex overflow-hidden">
+
+        {/* ── Left / Main ── */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 min-w-0">
+
+          {/* AI Message card */}
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-start gap-4">
+                <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <BrainCircuit className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <p className="font-semibold text-sm">AI Interviewer</p>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono">
+                      <Timer className="h-3 w-3" />
+                      {elapsed}
+                    </div>
+                  </div>
+
+                  <AnimatePresence mode="wait">
+                    {status === "thinking" || status === "loading" ? (
+                      <motion.div key="dots" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="flex items-center gap-1.5 h-6">
+                        {[0, 1, 2].map(i => (
+                          <div key={i} className="h-2 w-2 bg-primary/40 rounded-full animate-bounce"
+                            style={{ animationDelay: `${i * 0.15}s` }} />
+                        ))}
+                      </motion.div>
+                    ) : (
+                      <motion.p key={currentAIMessage.slice(0, 30)}
+                        initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                        className="text-sm leading-relaxed text-foreground">
+                        {currentAIMessage || "…"}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Voice / Input card */}
+          <Card>
+            <CardContent className="p-5">
+              <AnimatePresence mode="wait">
+
+                {isComplete ? (
+                  <motion.div key="complete" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="flex flex-col items-center gap-3 py-4">
+                    <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+                    <p className="font-semibold">Interview Complete</p>
+                    <p className="text-sm text-muted-foreground">Generating your report…</p>
+                  </motion.div>
+
+                ) : isRecording ? (
+                  // Recording state — waveform + stop button
+                  <motion.div key="recording" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground font-medium">You are speaking...</span>
+                      <span className="font-mono text-muted-foreground text-xs">{recordingTimer}</span>
+                    </div>
+
+                    <div className="rounded-xl bg-primary/5 border border-primary/10 px-4 py-3 flex items-center justify-center">
+                      <WaveformBars active />
+                    </div>
+
+                    {transcript && (
+                      <p className="text-xs text-muted-foreground italic px-1 line-clamp-2">
+                        {transcript}
+                        {interimText && <span className="opacity-60"> {interimText}</span>}
+                      </p>
+                    )}
+
+                    <div className="flex flex-col items-center gap-1.5">
+                      <motion.button
+                        onClick={stopRecording}
+                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                        className="h-14 w-14 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/25"
+                      >
+                        <div className="h-5 w-5 bg-white rounded-[3px]" />
+                      </motion.button>
+                      <span className="text-xs text-muted-foreground">Click to stop</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1 border-t">
+                      <div className="flex items-center gap-1.5 text-primary font-medium">
+                        <span className="h-1.5 w-1.5 bg-primary rounded-full animate-pulse inline-block" />
+                        Listening...
+                      </div>
+                      <button onClick={() => handleSend()}
+                        className="text-muted-foreground hover:text-foreground transition-colors">
+                        Press Enter to submit
+                      </button>
+                    </div>
+                  </motion.div>
+
+                ) : (
+                  // Idle / ready state
+                  <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+
+                    {transcript ? (
+                      // Transcript ready — show with send/clear
+                      <>
+                        <div className="rounded-xl bg-muted/40 border px-4 py-3 text-sm leading-relaxed">
+                          {transcript}
+                          {interimText && <span className="text-muted-foreground italic"> {interimText}</span>}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button onClick={() => handleSend()} disabled={!canSend} className="flex-1">
+                            Send Response
+                          </Button>
+                          <Button variant="outline"
+                            onClick={() => { transcriptRef.current = ""; setTranscript(""); setInterimText(""); }}>
+                            Clear
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      // No transcript yet — prompt to tap mic
+                      <div className="flex flex-col items-center gap-3 py-2">
+                        {srSupported ? (
+                          <motion.button
+                            onClick={startRecording}
+                            disabled={status === "thinking" || status === "speaking"}
+                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                            className={cn(
+                              "h-14 w-14 rounded-full flex items-center justify-center shadow-md transition-colors",
+                              status === "thinking" || status === "speaking"
+                                ? "bg-muted cursor-not-allowed"
+                                : "bg-primary hover:bg-primary/90 shadow-primary/25",
+                            )}
+                          >
+                            {status === "thinking"
+                              ? <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
+                              : <Mic className="h-6 w-6 text-white" />
+                            }
+                          </motion.button>
+                        ) : null}
+                        <p className="text-sm text-muted-foreground text-center">
+                          {status === "thinking" ? "Alex is thinking…"
+                            : status === "speaking" ? "Alex is speaking…"
+                            : srSupported ? "Click the microphone to start speaking"
+                            : "Type your response below"}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Controls row */}
+                    <div className="flex items-center justify-between text-xs border-t pt-3">
+                      <button
+                        onClick={() => { const n = !muted; setMuted(n); if (n) window.speechSynthesis?.cancel(); }}
+                        className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                        {muted ? "Unmute AI" : "Mute AI"}
+                      </button>
+                      <button onClick={() => setShowTextInput(v => !v)}
+                        className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+                        ⌨ Keyboard
+                      </button>
+                    </div>
+
+                    {/* Keyboard fallback */}
+                    <AnimatePresence>
+                      {showTextInput && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                          <div className="flex gap-2 pt-1">
+                            <input
+                              autoFocus
+                              value={textInput}
+                              onChange={e => setTextInput(e.target.value)}
+                              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                              placeholder="Type your response…"
+                              disabled={status === "thinking"}
+                              className="flex-1 bg-background border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-primary/50 transition-all"
+                            />
+                            <Button onClick={() => handleSend()} disabled={!canSend} size="icon" className="h-10 w-10 shrink-0">
+                              <Send className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </CardContent>
+          </Card>
+
+          {/* Interview Progress */}
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-sm">Interview Progress</h3>
+                <span className="text-sm text-muted-foreground font-mono">
+                  {questionIndex} / {targetQ || "—"}
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-muted rounded-full mb-5 overflow-hidden">
                 <motion.div
                   className="h-full bg-primary rounded-full"
                   animate={{ width: `${progressPct}%` }}
                   transition={{ duration: 0.5 }}
                 />
               </div>
-              <span className="text-xs font-mono text-slate-500">Q{questionIndex}/{targetQ}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-1.5 text-xs font-mono text-slate-500">
-            <Timer className="h-3.5 w-3.5" />
-            {elapsed}
-          </div>
-          <button
-            onClick={() => {
-              const next = !muted;
-              setMuted(next);
-              if (next) window.speechSynthesis?.cancel();
-            }}
-            className="text-slate-500 hover:text-slate-300 transition-colors"
-            title={muted ? "Unmute Alex" : "Mute Alex"}
-          >
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
-        </div>
-      </div>
+              <div className="flex gap-1">
+                {STAGES.map((s, idx) => {
+                  const done = idx < currentStageIdx;
+                  const active = idx === currentStageIdx;
+                  return (
+                    <div key={s.id} className="flex flex-col items-center gap-1.5 flex-1">
+                      <div className={cn(
+                        "h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all",
+                        done   ? "bg-emerald-500 border-emerald-500 text-white" :
+                        active ? "bg-primary border-primary text-primary-foreground" :
+                                 "bg-background border-border text-muted-foreground",
+                      )}>
+                        {done ? <CheckCircle2 className="h-4 w-4" /> : <span>{idx + 1}</span>}
+                      </div>
+                      <span className={cn(
+                        "text-[10px] text-center leading-tight font-medium",
+                        active ? "text-primary" : done ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
+                      )}>
+                        {s.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* ── Center stage ── */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 py-2">
-
-        {/* Avatar */}
-        <div className="flex flex-col items-center gap-3">
-          <AvatarRings status={status} />
-
-          <div className="text-center">
-            <p className="text-2xl font-bold tracking-tight">Alex</p>
-            <p className="text-slate-500 text-sm">AI Interviewer</p>
-          </div>
-
-          {/* Status chip */}
-          <motion.div
-            key={statusLabel[status]}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={cn("flex items-center gap-2 text-sm font-medium", statusColor[status])}
-          >
-            {(status === "thinking" || status === "loading") && (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            )}
-            {statusLabel[status]}
-          </motion.div>
+          {/* Live Notes */}
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-sm">Live Notes</h3>
+                <Badge variant="outline" className="text-[10px] font-normal">
+                  <Lock className="h-2.5 w-2.5 mr-1" />
+                  Private
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Your key points will appear here during the interview...
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Caption cards */}
-        <div className="w-full max-w-lg space-y-3">
-          {/* AI caption */}
-          <AnimatePresence mode="wait">
-            {currentAIMessage && (
-              <motion.div
-                key={currentAIMessage.slice(0, 40)}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl bg-white/5 border border-white/8 backdrop-blur px-5 py-4"
-              >
-                <p className="text-[10px] font-bold text-violet-400 uppercase tracking-widest mb-2">Alex</p>
-                <p className="text-sm text-slate-200 leading-relaxed">{currentAIMessage}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        {/* ── Right Sidebar ── */}
+        <div className="w-72 xl:w-80 border-l overflow-y-auto p-4 space-y-4 shrink-0 hidden md:block">
 
-          {/* Candidate transcript */}
-          <AnimatePresence>
-            {(transcript || interimText) && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="rounded-2xl bg-emerald-950/40 border border-emerald-800/40 px-5 py-4"
-              >
-                <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2">You</p>
-                <p className="text-sm text-slate-200 leading-relaxed">
-                  {transcript}
-                  {interimText && <span className="text-slate-500 italic"> {interimText}</span>}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Text input (keyboard fallback / optional) */}
-          <AnimatePresence>
-            {showTextInput && !isComplete && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="flex gap-2 pt-1">
-                  <input
-                    autoFocus
-                    value={textInput}
-                    onChange={e => setTextInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder="Type your response…"
-                    disabled={status === "thinking"}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none focus:border-primary/50 transition-colors"
-                  />
-                  <Button
-                    onClick={() => handleSend()}
-                    disabled={!canSend}
-                    size="icon"
-                    className="h-10 w-10 bg-primary shrink-0"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+          {/* Interview Details */}
+          <Card>
+            <CardHeader className="pb-0 pt-4 px-4">
+              <CardTitle className="text-sm font-semibold">Interview Details</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pt-3 pb-4 space-y-3.5">
+              {[
+                { Icon: Briefcase,     label: "Role",      value: interview?.targetRole ?? "—" },
+                { Icon: BrainCircuit,  label: "Type",      value: "Live AI Interview" },
+                { Icon: Users,         label: "Level",     value: interview?.difficulty ?? "—" },
+                { Icon: Clock,         label: "Duration",  value: `${interview?.durationMinutes ?? 30} mins` },
+                { Icon: Hash,          label: "Questions", value: "Dynamic" },
+                { Icon: Globe,         label: "Language",  value: "English" },
+              ].map(({ Icon, label, value }) => (
+                <div key={label} className="flex items-center gap-3">
+                  <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">{label}</p>
+                    <p className="text-xs font-medium capitalize">{value}</p>
+                  </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Interview Tips */}
+          <Card>
+            <CardHeader className="pb-0 pt-4 px-4">
+              <CardTitle className="text-sm font-semibold">Interview Tips</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pt-3 pb-4 space-y-2.5">
+              {TIPS.map((tip, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-muted-foreground">{tip}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* AI is evaluating */}
+          <Card className="border-primary/20">
+            <CardHeader className="pb-0 pt-4 px-4">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 bg-primary rounded-full animate-pulse inline-block" />
+                <CardTitle className="text-sm font-semibold text-primary">AI is evaluating</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pt-3 pb-4">
+              <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                The AI is analyzing your answers in real-time based on multiple factors.
+              </p>
+              <div className="space-y-2">
+                {EVAL_FACTORS.map(({ icon: Icon, label }) => (
+                  <div key={label} className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Icon className="h-3.5 w-3.5 text-primary/60" />
+                    {label}
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground pt-1">And more...</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* ── Bottom controls ── */}
-      <div className="shrink-0 pb-10 px-6 flex flex-col items-center gap-5">
-
-        {/* Hint text */}
-        <p className="text-xs text-slate-600 h-4">
-          {isComplete
-            ? "Interview complete — generating your report"
-            : isRecording
-            ? "Tap mic to stop · tap ➤ to send"
-            : status === "thinking" || status === "speaking"
-            ? ""
-            : srSupported
-            ? "Tap mic to speak · or use keyboard ⌨"
-            : "Type your response and press send"}
-        </p>
-
-        {/* Buttons row */}
-        <div className="flex items-center justify-center gap-6">
-
-          {/* Keyboard toggle */}
-          {!isComplete && (
-            <motion.button
-              onClick={() => setShowTextInput(v => !v)}
-              whileTap={{ scale: 0.9 }}
-              className={cn(
-                "h-12 w-12 rounded-full flex items-center justify-center transition-colors",
-                showTextInput ? "bg-slate-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700",
-              )}
-              title="Toggle keyboard input"
-            >
-              <span className="text-lg">⌨</span>
-            </motion.button>
-          )}
-
-          {/* Mic button */}
-          {srSupported && !isComplete && (
-            <motion.button
-              onClick={toggleMic}
-              disabled={status === "thinking" || status === "loading"}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.92 }}
-              className={cn(
-                "h-20 w-20 rounded-full flex items-center justify-center shadow-xl transition-all duration-200",
-                isRecording
-                  ? "bg-emerald-500 shadow-emerald-500/40 ring-4 ring-emerald-500/20"
-                  : status === "thinking" || status === "loading"
-                  ? "bg-slate-800 opacity-40 cursor-not-allowed"
-                  : "bg-slate-700 hover:bg-slate-600 shadow-slate-900/50",
-              )}
-            >
-              {isRecording
-                ? <Mic className="h-8 w-8 text-white" />
-                : <MicOff className="h-8 w-8 text-slate-300" />
-              }
-            </motion.button>
-          )}
-
-          {/* Send button — appears when transcript ready */}
-          <AnimatePresence>
-            {canSend && (
-              <motion.button
-                onClick={() => handleSend()}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.92 }}
-                className="h-16 w-16 rounded-full bg-primary flex items-center justify-center shadow-lg shadow-primary/30"
-              >
-                <Send className="h-6 w-6 text-white" />
-              </motion.button>
-            )}
-          </AnimatePresence>
-
-          {/* End call */}
-          {!isComplete && (
-            <motion.button
-              onClick={() => setShowEndDialog(true)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.92 }}
-              className="h-16 w-16 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center shadow-lg shadow-red-600/30 transition-colors"
-            >
-              <PhoneOff className="h-7 w-7 text-white" />
-            </motion.button>
-          )}
-        </div>
-      </div>
-
-      {/* ── End call dialog ── */}
+      {/* ── End interview dialog ── */}
       <AnimatePresence>
         {showEndDialog && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           >
             <motion.div
-              initial={{ scale: 0.88, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.88, opacity: 0 }}
-              transition={{ type: "spring", damping: 20 }}
-              className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+              initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }} transition={{ type: "spring", damping: 22 }}
+              className="bg-card border rounded-2xl p-6 max-w-sm w-full shadow-2xl"
             >
-              <div className="h-12 w-12 rounded-full bg-red-600/20 flex items-center justify-center mb-4">
-                <PhoneOff className="h-6 w-6 text-red-500" />
+              <div className="h-11 w-11 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                <PhoneOff className="h-5 w-5 text-destructive" />
               </div>
-              <h3 className="font-bold text-lg mb-1">End the interview?</h3>
-              <p className="text-slate-400 text-sm mb-5">
-                Your report will be generated from the conversation so far. You won&apos;t be able to continue.
+              <h3 className="font-bold text-base mb-1">End the interview?</h3>
+              <p className="text-muted-foreground text-sm mb-5">
+                Your report will be generated from the conversation so far.
               </p>
               <div className="flex gap-3">
-                <Button
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={handleEndEarly}
-                >
+                <Button variant="destructive" className="flex-1" onClick={handleEndEarly}>
                   End &amp; Get Report
                 </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800"
-                  onClick={() => setShowEndDialog(false)}
-                >
+                <Button variant="outline" className="flex-1" onClick={() => setShowEndDialog(false)}>
                   Continue
                 </Button>
               </div>
