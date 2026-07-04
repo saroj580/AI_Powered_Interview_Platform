@@ -6,7 +6,7 @@ import { getAuthUser } from "@/lib/get-auth-user";
 const interviewSchema = z.object({
   title: z.string().min(3),
   description: z.string().optional(),
-  type: z.enum(["TECHNICAL", "BEHAVIORAL", "CODING", "VOICE", "MIXED", "APTITUDE"]),
+  type: z.enum(["TECHNICAL", "BEHAVIORAL", "CODING", "VOICE", "MIXED", "APTITUDE", "LIVE"]),
   status: z.enum(["DRAFT", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
   targetRole: z.string().min(2),
   difficulty: z.enum(["EASY", "MEDIUM", "HARD"]),
