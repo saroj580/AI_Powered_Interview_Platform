@@ -17,6 +17,45 @@ import { cn } from "@/lib/utils";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
+// ── Pyodide singleton (Python runs client-side via WebAssembly CPython) ───────
+// Loaded lazily on first Python run; cached across executions in the session.
+
+declare global {
+  interface Window {
+    loadPyodide?: (opts?: Record<string, unknown>) => Promise<PyodideInstance>;
+  }
+}
+
+interface PyodideInstance {
+  setStdout(opts: { batched: (s: string) => void }): void;
+  setStderr(opts: { batched: (s: string) => void }): void;
+  runPythonAsync(code: string): Promise<unknown>;
+}
+
+let _pyodide: PyodideInstance | null = null;
+let _pyodidePromise: Promise<PyodideInstance> | null = null;
+
+function loadPyodideOnce(): Promise<PyodideInstance> {
+  if (_pyodide) return Promise.resolve(_pyodide);
+  if (_pyodidePromise) return _pyodidePromise;
+
+  _pyodidePromise = new Promise<PyodideInstance>((resolve, reject) => {
+    if (typeof document === "undefined") { reject(new Error("SSR")); return; }
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js";
+    script.crossOrigin = "anonymous";
+    script.onload = () => {
+      window.loadPyodide!()
+        .then((py) => { _pyodide = py; resolve(py); })
+        .catch(reject);
+    };
+    script.onerror = () => reject(new Error("Failed to load Pyodide"));
+    document.head.appendChild(script);
+  });
+
+  return _pyodidePromise;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface MCQQuestion {
@@ -209,24 +248,31 @@ export function InterviewSession({ interviewId }: { interviewId: string }) {
       return;
     }
 
-    // Python / Java — server-side via Wandbox
-    try {
-      const res = await fetch("/api/v1/code/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, language }),
-      });
-      const data = await res.json();
-      if (data.error) {
-        setRunOutput({ stdout: "", stderr: data.error, exitCode: 1 });
-      } else {
-        setRunOutput({ stdout: data.output ?? "", stderr: data.stderr ?? "", exitCode: data.exitCode ?? 0 });
+    // Python — client-side via Pyodide (WebAssembly CPython)
+    if (language === "python") {
+      const stdout: string[] = [];
+      const stderr: string[] = [];
+      try {
+        const py = await loadPyodideOnce();
+        py.setStdout({ batched: (s) => stdout.push(s) });
+        py.setStderr({ batched: (s) => stderr.push(s) });
+        await py.runPythonAsync(code);
+        setRunOutput({ stdout: stdout.join("\n"), stderr: stderr.join("\n"), exitCode: 0 });
+      } catch (e) {
+        setRunOutput({ stdout: stdout.join("\n"), stderr: String(e), exitCode: 1 });
+      } finally {
+        setIsRunning(false);
       }
-    } catch {
-      setRunOutput({ stdout: "", stderr: "Network error — could not reach execution server.", exitCode: 1 });
-    } finally {
-      setIsRunning(false);
+      return;
     }
+
+    // Java — no free server-side execution available; guide user to switch language
+    setRunOutput({
+      stdout: "",
+      stderr: "Java execution is not available in the browser.\nSwitch the language to JavaScript or Python to run your code.",
+      exitCode: 1,
+    });
+    setIsRunning(false);
   }
 
   const handleTranscript = useCallback((text: string, isFinal: boolean) => {

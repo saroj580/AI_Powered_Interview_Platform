@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/get-auth-user";
 
-// Wandbox compiler IDs — free, no auth required (JavaScript runs client-side)
-const WANDBOX_COMPILER: Record<string, string> = {
-  python: "cpython-3.12.0",
-  java:   "openjdk-21",
+// Rextester language IDs — free, no auth required (JS runs client-side)
+const REXTESTER_LANG: Record<string, number> = {
+  python: 5,  // Python 3
+  java:   4,  // Java
 };
 
-const WANDBOX_URL = "https://wandbox.org/api/compile.json";
+const REXTESTER_URL = "https://rextester.com/rundotnet/api";
 
 export async function POST(req: NextRequest) {
   const user = getAuthUser(req);
@@ -16,25 +16,34 @@ export async function POST(req: NextRequest) {
   const { code, language } = await req.json() as { code: string; language: string };
   if (!code?.trim()) return NextResponse.json({ output: "", stderr: "", exitCode: 0 });
 
-  // JavaScript executes client-side; this route handles Python / Java only
-  const compiler = WANDBOX_COMPILER[language];
-  if (!compiler) {
-    return NextResponse.json({ error: `Server-side execution not supported for ${language}` }, { status: 400 });
+  const langId = REXTESTER_LANG[language];
+  if (!langId) {
+    return NextResponse.json(
+      { error: `Server-side execution not supported for ${language}` },
+      { status: 400 },
+    );
   }
 
   try {
-    const res = await fetch(WANDBOX_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, compiler }),
+    const body = new URLSearchParams({
+      LanguageChoiceWrapper: String(langId),
+      Program: code,
+      Input: "",
+      CompilerArgs: "",
     });
 
-    if (!res.ok) throw new Error(`Wandbox API error: ${res.status}`);
+    const res = await fetch(REXTESTER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+
+    if (!res.ok) throw new Error(`Rextester API error: ${res.status}`);
 
     const data = await res.json();
-    const output = data.program_output ?? "";
-    const stderr = (data.compiler_error ?? "") + (data.program_error ?? "");
-    const exitCode = data.status === "0" ? 0 : 1;
+    const output = data.Result ?? "";
+    const stderr = data.Errors ?? "";
+    const exitCode = data.Errors ? 1 : 0;
 
     return NextResponse.json({ output, stderr, exitCode });
   } catch (err) {
