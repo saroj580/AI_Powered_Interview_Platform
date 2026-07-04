@@ -231,11 +231,38 @@ export function InterviewSession({ interviewId }: { interviewId: string }) {
         const iv = await ivRes.json();
         const { questions: qs } = await qRes.json();
 
+        // Coerce any value to a plain string — prevents "Objects are not valid as React child"
+        // when the AI returns objects/arrays in place of strings (e.g. examples.input)
+        const str = (v: unknown): string =>
+          v == null ? "" : typeof v === "string" ? v : JSON.stringify(v);
+
         // Normalise question types based on structure + interview type
         const normalised: Question[] = qs.map((q: Record<string, unknown>) => {
-          if (q.starterCode) return { ...q, type: "CODING" };
-          if (iv.type === "VOICE") return { id: q.id, question: q.question, type: "VOICE" };
-          return { ...q, type: "MCQ" };
+          if (q.starterCode) {
+            const rawExamples = Array.isArray(q.examples) ? q.examples : [];
+            return {
+              ...q,
+              type: "CODING",
+              title: str(q.title),
+              description: str(q.description),
+              examples: rawExamples.map((ex: Record<string, unknown>) => ({
+                input: str(ex.input),
+                output: str(ex.output),
+                explanation: ex.explanation != null ? str(ex.explanation) : undefined,
+              })),
+              constraints: Array.isArray(q.constraints)
+                ? (q.constraints as unknown[]).map(str)
+                : [],
+            } as CodingQuestion;
+          }
+          if (iv.type === "VOICE") return { id: str(q.id), question: str(q.question), type: "VOICE" } as VoiceQuestion;
+          return {
+            ...q,
+            type: "MCQ",
+            question: str(q.question),
+            options: Array.isArray(q.options) ? (q.options as unknown[]).map(str) : [],
+            explanation: str(q.explanation),
+          } as MCQQuestion;
         });
 
         setInterview(iv);
