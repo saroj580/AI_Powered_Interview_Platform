@@ -28,6 +28,8 @@ enum InterviewType {
   CODING
   VOICE
   MIXED
+  APTITUDE
+  LIVE
 }
 
 enum InterviewStatus {

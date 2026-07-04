@@ -8,11 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronLeft, Sparkles, Video, Code2, MessageSquare, Mic, Layers, Brain, AlertCircle } from "lucide-react";
+import { ChevronRight, ChevronLeft, Sparkles, Video, Code2, MessageSquare, Mic, Layers, Brain, AlertCircle, BrainCircuit } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { toast } from "sonner";
 
 const TYPES = [
+    { id: "LIVE",       label: "Live AI Interview", desc: "Real-time conversational interview with adaptive AI", icon: BrainCircuit, color: "text-primary" },
     { id: "TECHNICAL",  label: "Technical",  desc: "Concepts & system design (MCQ)", icon: Code2,        color: "text-violet-500" },
     { id: "BEHAVIORAL", label: "Behavioral", desc: "Soft skills & scenarios (MCQ)",  icon: MessageSquare, color: "text-emerald-500" },
     { id: "CODING",     label: "Live Coding", desc: "Monaco editor + run + AI review", icon: Video,       color: "text-blue-500" },
@@ -62,6 +63,7 @@ export function InterviewSetupWizard() {
 
     const steps = ["Interview Type", "Role & Level", "Difficulty & Count", "Review & Start"];
     const isCoding = config.type === "CODING";
+    const isLive = config.type === "LIVE";
     const counts = isCoding ? CODING_COUNTS : MCQ_COUNTS;
     const duration = getDuration(config.type, config.difficulty, config.count);
 
@@ -100,7 +102,8 @@ export function InterviewSetupWizard() {
 
             const interview = await res.json();
             toast.success("Interview created! Starting session…");
-            router.push(`/candidate/interviews/${interview.id}/session`);
+            const dest = config.type === "LIVE" ? "live" : "session";
+            router.push(`/candidate/interviews/${interview.id}/${dest}`);
         } catch (err) {
             setError((err as Error).message);
             setLoading(false);
@@ -205,6 +208,8 @@ export function InterviewSetupWizard() {
                                 <CardDescription>
                                     {isCoding
                                         ? "Coding interviews: Easy = 20 min/Q · Medium = 30 min/Q · Hard = 45 min/Q"
+                                        : isLive
+                                        ? "Set the difficulty — the AI will adaptively ask up to this many questions"
                                         : "Set the challenge level for this session"}
                                 </CardDescription>
                             </CardHeader>
@@ -272,7 +277,7 @@ export function InterviewSetupWizard() {
                                         { label: "Target Role", value: config.role || "Not specified" },
                                         { label: "Experience", value: config.experience },
                                         { label: "Difficulty", value: config.difficulty },
-                                        { label: isCoding ? "Problems" : "Questions", value: `${config.count} ${isCoding ? "problems" : "questions"}` },
+                                        { label: isCoding ? "Problems" : isLive ? "Max Questions" : "Questions", value: `${config.count} ${isCoding ? "problems" : "questions"}` },
                                         { label: "Est. Duration", value: `~${duration} min` },
                                     ].map((item) => (
                                         <div key={item.label} className="flex justify-between items-center">
@@ -284,8 +289,12 @@ export function InterviewSetupWizard() {
                                 <div className="mt-5 p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-3">
                                     <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                                     <p className="text-sm text-muted-foreground">
-                                        Groq LLaMA 3.3 will generate <strong className="text-foreground">{config.count} personalized {isCoding ? "coding problem" : "question"}{config.count > 1 ? "s" : ""}</strong> for a <strong className="text-foreground">{config.role || "software engineering"}</strong> role at <strong className="text-foreground">{config.difficulty.toLowerCase()}</strong> difficulty.
-                                        {isCoding && <> You&apos;ll have <strong className="text-foreground">{duration} minutes</strong> total.</>}
+                                        {isLive ? (
+                                            <>Alex, your AI interviewer, will conduct a <strong className="text-foreground">live conversational interview</strong> for a <strong className="text-foreground">{config.role || "software engineering"}</strong> role at <strong className="text-foreground">{config.difficulty.toLowerCase()}</strong> difficulty — asking up to <strong className="text-foreground">{config.count} adaptive questions</strong> with follow-ups based on your responses.</>
+                                        ) : (
+                                            <>Groq LLaMA 3.3 will generate <strong className="text-foreground">{config.count} personalized {isCoding ? "coding problem" : "question"}{config.count > 1 ? "s" : ""}</strong> for a <strong className="text-foreground">{config.role || "software engineering"}</strong> role at <strong className="text-foreground">{config.difficulty.toLowerCase()}</strong> difficulty.
+                                            {isCoding && <> You&apos;ll have <strong className="text-foreground">{duration} minutes</strong> total.</>}</>
+                                        )}
                                     </p>
                                 </div>
                                 {error && (

@@ -106,8 +106,6 @@ interface ISpeechRecognition extends EventTarget {
   onend: (() => void) | null; onstart: (() => void) | null;
   start(): void; stop(): void; abort(): void;
 }
-declare global { interface Window { SpeechRecognition?: new () => ISpeechRecognition; webkitSpeechRecognition?: new () => ISpeechRecognition } }
-
 function getSR(): (new () => ISpeechRecognition) | null {
   if (typeof window === "undefined" || !window.isSecureContext) return null;
   return window.SpeechRecognition ?? window.webkitSpeechRecognition ?? null;

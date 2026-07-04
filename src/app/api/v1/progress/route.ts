@@ -5,7 +5,7 @@ import { format } from "date-fns";
 
 const TYPE_LABEL: Record<string, string> = {
   TECHNICAL: "Technical", BEHAVIORAL: "Behavioral", CODING: "Coding",
-  VOICE: "Voice", MIXED: "Mixed", APTITUDE: "Aptitude",
+  VOICE: "Voice", MIXED: "Mixed", APTITUDE: "Aptitude", LIVE: "Live",
 };
 
 export async function GET(req: NextRequest) {

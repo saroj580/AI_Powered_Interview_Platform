@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Plus, Search, Filter, Video, Code2, MessageSquare, Mic, Layers } from "lucide-react";
+import { Plus, Search, Filter, Video, Code2, MessageSquare, Mic, Layers, BrainCircuit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import { cn, getScoreColor } from "@/lib/utils";
 import { format } from "date-fns";
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
-    TECHNICAL: Code2, BEHAVIORAL: MessageSquare, CODING: Video, VOICE: Mic, MIXED: Layers,
+    TECHNICAL: Code2, BEHAVIORAL: MessageSquare, CODING: Video, VOICE: Mic, MIXED: Layers, LIVE: BrainCircuit,
 };
 
 const STATUS_STYLES: Record<string, string> = {
