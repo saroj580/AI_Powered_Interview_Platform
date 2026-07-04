@@ -2,72 +2,63 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/get-auth-user";
 
+const TYPE_LABEL: Record<string, string> = {
+  TECHNICAL: "Technical", BEHAVIORAL: "Behavioral", CODING: "Coding",
+  VOICE: "Voice", MIXED: "Mixed", APTITUDE: "Aptitude",
+};
+
 export async function GET(req: NextRequest) {
   const user = getAuthUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const [sessions, interviews] = await Promise.all([
-      prisma.session.findMany({
-        where: { userId: user.userId },
-        include: { evaluation: true },
-        orderBy: { createdAt: "asc" },
-      }),
-      prisma.interview.count({ where: { createdById: user.userId } }),
-    ]);
+    const interviews = await prisma.interview.findMany({
+      where: { createdById: user.userId },
+      select: { id: true, type: true, status: true, totalScore: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    });
 
-    const completed = sessions.filter((s) => s.status === "COMPLETED" && s.score !== null);
+    const completed = interviews.filter(
+      (iv) => iv.status === "COMPLETED" && iv.totalScore !== null
+    );
+
     const avgScore =
       completed.length > 0
-        ? Math.round(completed.reduce((sum, s) => sum + (s.score ?? 0), 0) / completed.length)
+        ? Math.round(completed.reduce((s, iv) => s + (iv.totalScore ?? 0), 0) / completed.length)
         : 0;
 
-    // Aggregate evaluations for skill breakdown
-    const evals = sessions.filter((s) => s.evaluation).map((s) => s.evaluation!);
-    const skillBreakdown =
-      evals.length > 0
-        ? {
-            technical: Math.round(evals.reduce((s, e) => s + e.technical, 0) / evals.length),
-            communication: Math.round(evals.reduce((s, e) => s + e.communication, 0) / evals.length),
-            problemSolving: Math.round(evals.reduce((s, e) => s + e.problemSolving, 0) / evals.length),
-            confidence: Math.round(evals.reduce((s, e) => s + e.confidence, 0) / evals.length),
-          }
-        : null;
+    // Avg score per interview type → strong / weak areas
+    const byType: Record<string, number[]> = {};
+    completed.forEach((iv) => {
+      if (!byType[iv.type]) byType[iv.type] = [];
+      byType[iv.type].push(iv.totalScore!);
+    });
 
-    // Determine strong/weak topics from evaluations
     const strong: string[] = [];
     const weak: string[] = [];
-    if (skillBreakdown) {
-      const topics = [
-        { name: "Technical", score: skillBreakdown.technical },
-        { name: "Communication", score: skillBreakdown.communication },
-        { name: "Problem Solving", score: skillBreakdown.problemSolving },
-        { name: "Confidence", score: skillBreakdown.confidence },
-      ];
-      topics.forEach((t) => {
-        if (t.score >= 75) strong.push(t.name);
-        else if (t.score < 65) weak.push(t.name);
-      });
-    }
+    Object.entries(byType).forEach(([type, scores]) => {
+      const avg = scores.reduce((s, n) => s + n, 0) / scores.length;
+      const label = TYPE_LABEL[type] ?? type;
+      if (avg >= 75) strong.push(label);
+      else if (avg < 65) weak.push(label);
+    });
 
-    // Weekly change: compare sessions in last 7 days vs prior 7 days
+    // Weekly change: completed interviews this week vs prior week
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const thisWeek = sessions.filter((s) => new Date(s.createdAt) > weekAgo).length;
-    const lastWeek = sessions.filter(
-      (s) => new Date(s.createdAt) > twoWeeksAgo && new Date(s.createdAt) <= weekAgo
+    const thisWeek = interviews.filter((iv) => new Date(iv.createdAt) > weekAgo).length;
+    const lastWeek = interviews.filter(
+      (iv) => new Date(iv.createdAt) > twoWeeksAgo && new Date(iv.createdAt) <= weekAgo
     ).length;
 
     return NextResponse.json({
-      totalInterviews: interviews,
-      totalSessions: sessions.length,
-      completedSessions: completed.length,
+      totalInterviews: interviews.length,
+      completedInterviews: completed.length,
       averageScore: avgScore,
       strong,
       weak,
       weeklyChange: thisWeek - lastWeek,
-      skillBreakdown,
     });
   } catch (err) {
     console.error("[dashboard/stats]", err);

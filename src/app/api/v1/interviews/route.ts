@@ -6,7 +6,7 @@ import { getAuthUser } from "@/lib/get-auth-user";
 const interviewSchema = z.object({
   title: z.string().min(3),
   description: z.string().optional(),
-  type: z.enum(["TECHNICAL", "BEHAVIORAL", "CODING", "VOICE", "MIXED"]),
+  type: z.enum(["TECHNICAL", "BEHAVIORAL", "CODING", "VOICE", "MIXED", "APTITUDE"]),
   status: z.enum(["DRAFT", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
   targetRole: z.string().min(2),
   difficulty: z.enum(["EASY", "MEDIUM", "HARD"]),
@@ -28,38 +28,25 @@ export async function GET(req: NextRequest) {
     const interviews = await prisma.interview.findMany({
       where: {
         createdById: user.userId,
-        ...(status ? { sessions: { some: { status: status as never } } } : {}),
+        ...(status ? { status: status as never } : {}),
         ...(search ? { title: { contains: search, mode: "insensitive" } } : {}),
-      },
-      include: {
-        sessions: {
-          where: { userId: user.userId },
-          orderBy: { createdAt: "desc" },
-          take: 1,
-        },
       },
       orderBy: { createdAt: "desc" },
       take: limit,
     });
 
-    const formatted = interviews.map((iv) => {
-      const session = iv.sessions[0];
-      return {
-        id: iv.id,
-        title: iv.title,
-        type: iv.type,
-        difficulty: iv.difficulty,
-        targetRole: iv.targetRole,
-        questionCount: iv.questionCount,
-        durationMinutes: iv.durationMinutes,
-        status: session?.status ?? "DRAFT",
-        score: session?.score ?? null,
-        sessionId: session?.id ?? null,
-        createdAt: iv.createdAt,
-        startedAt: session?.startedAt ?? null,
-        endedAt: session?.endedAt ?? null,
-      };
-    });
+    const formatted = interviews.map((iv) => ({
+      id: iv.id,
+      title: iv.title,
+      type: iv.type,
+      difficulty: iv.difficulty,
+      targetRole: iv.targetRole,
+      questionCount: iv.questionCount,
+      durationMinutes: iv.durationMinutes,
+      status: iv.status,
+      score: iv.totalScore ?? null,
+      createdAt: iv.createdAt,
+    }));
 
     return NextResponse.json(formatted);
   } catch (err) {
