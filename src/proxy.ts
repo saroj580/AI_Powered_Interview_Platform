@@ -47,7 +47,12 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/candidate/dashboard', request.url));
   }
 
-  if (!decoded.onboardingCompleted && !pathname.startsWith('/onboarding') && !pathname.startsWith('/api/v1/onboarding')) {
+  if (
+    !decoded.onboardingCompleted &&
+    !pathname.startsWith('/onboarding') &&
+    !pathname.startsWith('/api/v1/onboarding') &&
+    !pathname.startsWith('/api/v1/resume')
+  ) {
     return NextResponse.redirect(new URL('/onboarding', request.url));
   }
 
