@@ -14,6 +14,7 @@ interface OnboardingLayoutProps {
   nextDisabled?: boolean;
   previousDisabled?: boolean;
   showNavigation?: boolean;
+  nextLabel?: string;
 }
 
 export function OnboardingLayout({
@@ -25,6 +26,7 @@ export function OnboardingLayout({
   nextDisabled = false,
   previousDisabled = false,
   showNavigation = true,
+  nextLabel = 'Next',
 }: OnboardingLayoutProps) {
   const progress = (currentStep / totalSteps) * 100;
 
@@ -91,7 +93,7 @@ export function OnboardingLayout({
                 disabled={nextDisabled}
                 className="flex items-center gap-2"
               >
-                Next
+                {nextLabel}
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>

@@ -6,109 +6,90 @@ import { useState } from 'react';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import { Upload, FileText, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 
 export default function OnboardingStep4() {
   const router = useRouter();
-  const { progress, setStep4, nextStep, previousStep } = useOnboardingStore();
-  
-  const [file, setFile] = useState<File | null>(progress.step4?.resumeFile ? new File([], progress.step4.resumeFile.name) : null);
+  const { progress, setStep4, setStep5, nextStep, previousStep } = useOnboardingStore();
+
+  const [file, setFile] = useState<File | null>(
+    progress.step4?.resumeFile ? new File([], progress.step4.resumeFile.name) : null
+  );
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
 
-  const isValid = file !== null;
-
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
+  const handleDragEnter = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFile(files[0]);
-    }
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
   };
 
   const handleFile = (selectedFile: File) => {
-    const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-    const maxSize = 10 * 1024 * 1024; // 10MB
-
-    if (!validTypes.includes(selectedFile.type)) {
-      setError('Please upload a PDF or DOCX file');
-      return;
-    }
-
-    if (selectedFile.size > maxSize) {
-      setError('File size must be less than 10MB');
-      return;
-    }
-
+    const valid = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!valid.includes(selectedFile.type)) { setError('Please upload a PDF or DOCX file'); return; }
+    if (selectedFile.size > 10 * 1024 * 1024) { setError('File size must be less than 10MB'); return; }
     setFile(selectedFile);
     setError('');
   };
 
   const handleNext = async () => {
     if (!file) return;
-
     setIsUploading(true);
+    setError('');
     try {
-      // Simulate file upload
-      // In real implementation, upload to server
-      setStep4({
-        resumeFile: {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          url: '#',
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/v1/resume/analyze', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? 'Analysis failed. Please try again.');
+        return;
+      }
+      const a = data.analysis;
+      setStep4({ resumeFile: { name: file.name, size: file.size, type: file.type, url: '#' } });
+      setStep5({
+        atsAnalysis: {
+          score: a.atsScore,
+          detectedSkills: a.skills ?? [],
+          missingKeywords: a.missingKeywords ?? [],
+          strengths: a.strengths ?? [],
+          improvements: a.improvements ?? [],
         },
       });
-
       nextStep();
       router.push('/onboarding/step-5-ats-results');
-    } catch (err) {
-      setError('Failed to upload resume');
+    } catch {
+      setError('Failed to analyze resume. Please try again.');
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handlePrevious = () => {
-    previousStep();
-    router.push('/onboarding/step-3-skills');
-  };
+  const handlePrevious = () => { previousStep(); router.push('/onboarding/step-3-skills'); };
 
   return (
     <OnboardingLayout
       currentStep={4}
       onNext={handleNext}
       onPrevious={handlePrevious}
-      nextDisabled={!isValid || isUploading}
+      nextDisabled={!file || isUploading}
+      nextLabel={isUploading ? 'Analyzing…' : 'Analyze & Continue'}
     >
       <div className="space-y-8">
         <div>
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-            Upload your resume
-          </h2>
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Upload your resume</h2>
           <p className="text-lg text-slate-600 dark:text-slate-400">
-            We'll analyze it for ATS compatibility and extract key skills.
+            We&apos;ll analyze it for ATS compatibility and extract key skills.
           </p>
         </div>
 
         <div className="space-y-6">
-          {/* Drag and Drop Zone */}
           <div
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
+            onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
             className={`relative border-2 border-dashed rounded-lg p-8 sm:p-12 text-center transition-colors ${
               isDragging
@@ -126,9 +107,7 @@ export default function OnboardingStep4() {
 
             {file ? (
               <div className="space-y-3">
-                <div className="flex justify-center">
-                  <FileText className="w-12 h-12 text-blue-600" />
-                </div>
+                <div className="flex justify-center"><FileText className="w-12 h-12 text-blue-600" /></div>
                 <div>
                   <p className="font-semibold text-slate-900 dark:text-white">{file.name}</p>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -144,13 +123,9 @@ export default function OnboardingStep4() {
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="flex justify-center">
-                  <Upload className="w-12 h-12 text-slate-400" />
-                </div>
+                <div className="flex justify-center"><Upload className="w-12 h-12 text-slate-400" /></div>
                 <div>
-                  <p className="font-semibold text-slate-900 dark:text-white">
-                    Drag and drop your resume
-                  </p>
+                  <p className="font-semibold text-slate-900 dark:text-white">Drag and drop your resume</p>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     or{' '}
                     <label htmlFor="resume-input" className="text-blue-600 hover:text-blue-700 cursor-pointer font-medium">
@@ -158,14 +133,11 @@ export default function OnboardingStep4() {
                     </label>
                   </p>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-500">
-                  Supports PDF and DOCX (max 10MB)
-                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-500">Supports PDF and DOCX (max 10MB)</p>
               </div>
             )}
           </div>
 
-          {/* Error Message */}
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -174,10 +146,9 @@ export default function OnboardingStep4() {
           )}
         </div>
 
-        {/* Helper text */}
         <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-900/50">
           <p className="text-sm text-green-900 dark:text-green-100">
-            ✨ We'll analyze your resume for ATS keywords, formatting, and skills alignment with your target role.
+             We&apos;ll analyze your resume for ATS keywords, formatting, and skills alignment with your target role.
           </p>
         </div>
       </div>
