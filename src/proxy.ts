@@ -57,11 +57,18 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/candidate/dashboard', request.url));
   }
 
-  if (pathname.startsWith('/recruiter') && decoded.role !== 'RECRUITER') {
+  if (pathname.startsWith('/recruiter') && decoded.role !== 'RECRUITER' && decoded.role !== 'ADMIN') {
     return NextResponse.redirect(new URL('/candidate/dashboard', request.url));
   }
+  if (pathname.startsWith('/candidate') && decoded.role === 'RECRUITER') {
+    return NextResponse.redirect(new URL('/recruiter/dashboard', request.url));
+  }
+  if (pathname.startsWith('/candidate') && decoded.role === 'ADMIN') {
+    return NextResponse.redirect(new URL('/admin', request.url));
+  }
   if (pathname.startsWith('/admin') && decoded.role !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/candidate/dashboard', request.url));
+    const fallback = decoded.role === 'RECRUITER' ? '/recruiter/dashboard' : '/candidate/dashboard';
+    return NextResponse.redirect(new URL(fallback, request.url));
   }
 
   return NextResponse.next();

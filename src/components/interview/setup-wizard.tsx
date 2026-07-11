@@ -8,26 +8,36 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronLeft, Sparkles, Video, Code2, MessageSquare, Mic, Layers, AlertCircle } from "lucide-react";
+import { ChevronRight, ChevronLeft, Sparkles, Video, Code2, MessageSquare, Mic, Layers, Brain, AlertCircle, BrainCircuit } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { toast } from "sonner";
 
 const TYPES = [
-    { id: "TECHNICAL", label: "Technical", desc: "Coding & system design", icon: Code2, color: "text-violet-500" },
-    { id: "BEHAVIORAL", label: "Behavioral", desc: "Soft skills & scenarios", icon: MessageSquare, color: "text-emerald-500" },
-    { id: "CODING", label: "Live Coding", desc: "Monaco editor + AI review", icon: Video, color: "text-blue-500" },
-    { id: "VOICE", label: "Voice", desc: "Speech to text analysis", icon: Mic, color: "text-rose-500" },
-    { id: "MIXED", label: "Mixed", desc: "Technical + behavioral", icon: Layers, color: "text-amber-500" },
+    { id: "LIVE",       label: "Live AI Interview", desc: "Real-time conversational interview with adaptive AI", icon: BrainCircuit, color: "text-primary" },
+    { id: "TECHNICAL",  label: "Technical",  desc: "Concepts & system design (MCQ)", icon: Code2,        color: "text-violet-500" },
+    { id: "BEHAVIORAL", label: "Behavioral", desc: "Soft skills & scenarios (MCQ)",  icon: MessageSquare, color: "text-emerald-500" },
+    { id: "CODING",     label: "Live Coding", desc: "Monaco editor + run + AI review", icon: Video,       color: "text-blue-500" },
+    { id: "VOICE",      label: "Voice",      desc: "Speech to text analysis",        icon: Mic,           color: "text-rose-500" },
+    { id: "MIXED",      label: "Mixed",      desc: "Technical + behavioral (MCQ)",   icon: Layers,        color: "text-amber-500" },
+    { id: "APTITUDE",   label: "Aptitude",   desc: "Logical & numerical reasoning",  icon: Brain,         color: "text-cyan-500" },
 ];
 
 const DIFFICULTIES = [
-    { id: "EASY", label: "Easy", desc: "Fresher / Entry level", color: "text-emerald-500 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30" },
-    { id: "MEDIUM", label: "Medium", desc: "2–4 years experience", color: "text-amber-500 border-amber-300 bg-amber-50 dark:bg-amber-950/30" },
-    { id: "HARD", label: "Hard", desc: "Senior / Lead level", color: "text-red-500 border-red-300 bg-red-50 dark:bg-red-950/30" },
+    { id: "EASY",   label: "Easy",   desc: "Fresher / Entry level",   color: "text-emerald-500 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30" },
+    { id: "MEDIUM", label: "Medium", desc: "2–4 years experience",    color: "text-amber-500 border-amber-300 bg-amber-50 dark:bg-amber-950/30" },
+    { id: "HARD",   label: "Hard",   desc: "Senior / Lead level",     color: "text-red-500 border-red-300 bg-red-50 dark:bg-red-950/30" },
 ];
 
-const QUESTION_COUNTS = [5, 8, 10, 15, 20];
-const DURATION_MAP: Record<number, number> = { 5: 20, 8: 30, 10: 40, 15: 55, 20: 75 };
+// CODING: max 3 problems, time-per-question depends on difficulty
+const CODING_COUNTS = [1, 2, 3];
+const MCQ_COUNTS = [5, 8, 10, 15, 20];
+const MCQ_DURATION_MAP: Record<number, number> = { 5: 20, 8: 30, 10: 40, 15: 55, 20: 75 };
+const CODING_MINS_PER_Q: Record<string, number> = { EASY: 20, MEDIUM: 30, HARD: 45 };
+
+function getDuration(type: string, difficulty: string, count: number): number {
+    if (type === "CODING") return (CODING_MINS_PER_Q[difficulty] ?? 30) * count;
+    return MCQ_DURATION_MAP[count] ?? 40;
+}
 
 interface Config {
     type: string;
@@ -52,6 +62,10 @@ export function InterviewSetupWizard() {
     });
 
     const steps = ["Interview Type", "Role & Level", "Difficulty & Count", "Review & Start"];
+    const isCoding = config.type === "CODING";
+    const isLive = config.type === "LIVE";
+    const counts = isCoding ? CODING_COUNTS : MCQ_COUNTS;
+    const duration = getDuration(config.type, config.difficulty, config.count);
 
     async function handleStart() {
         if (!user) {
@@ -75,7 +89,7 @@ export function InterviewSetupWizard() {
                     targetRole: config.role || "Software Engineer",
                     difficulty: config.difficulty,
                     questionCount: config.count,
-                    durationMinutes: DURATION_MAP[config.count] ?? 40,
+                    durationMinutes: duration,
                     status: "IN_PROGRESS",
                     createdById: user.id,
                 }),
@@ -88,7 +102,8 @@ export function InterviewSetupWizard() {
 
             const interview = await res.json();
             toast.success("Interview created! Starting session…");
-            router.push(`/candidate/interviews/${interview.id}/session`);
+            const dest = config.type === "LIVE" ? "live" : "session";
+            router.push(`/candidate/interviews/${interview.id}/${dest}`);
         } catch (err) {
             setError((err as Error).message);
             setLoading(false);
@@ -129,7 +144,16 @@ export function InterviewSetupWizard() {
                                 {TYPES.map((t) => (
                                     <button
                                         key={t.id}
-                                        onClick={() => setConfig({ ...config, type: t.id })}
+                                        onClick={() => {
+                                            const goingCoding = t.id === "CODING";
+                                            const leavingCoding = config.type === "CODING";
+                                            setConfig({
+                                                ...config,
+                                                type: t.id,
+                                                // Reset count to sensible default when entering/leaving CODING
+                                                count: goingCoding ? 2 : leavingCoding ? 10 : config.count,
+                                            });
+                                        }}
                                         className={cn(
                                             "flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all",
                                             config.type === t.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
@@ -153,7 +177,7 @@ export function InterviewSetupWizard() {
                                 <div className="space-y-2">
                                     <Label>Target Role <span className="text-destructive">*</span></Label>
                                     <Input
-                                        placeholder="e.g. Senior React Developer, Java Backend Engineer…"
+                                        placeholder="e.g. FullStack Developer, Software Engineer, React Developer…"
                                         value={config.role}
                                         onChange={(e) => setConfig({ ...config, role: e.target.value })}
                                     />
@@ -179,7 +203,16 @@ export function InterviewSetupWizard() {
 
                     {step === 2 && (
                         <Card>
-                            <CardHeader><CardTitle>Difficulty & question count</CardTitle><CardDescription>Set the challenge level for this session</CardDescription></CardHeader>
+                            <CardHeader>
+                                <CardTitle>Difficulty & question count</CardTitle>
+                                <CardDescription>
+                                    {isCoding
+                                        ? "Coding interviews: Easy = 20 min/Q · Medium = 30 min/Q · Hard = 45 min/Q"
+                                        : isLive
+                                        ? "Set the difficulty — the AI will adaptively ask up to this many questions"
+                                        : "Set the challenge level for this session"}
+                                </CardDescription>
+                            </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="space-y-2">
                                     <Label>Difficulty</Label>
@@ -195,24 +228,37 @@ export function InterviewSetupWizard() {
                                             >
                                                 <p className={cn("font-semibold text-sm", config.difficulty === d.id ? "" : "text-foreground")}>{d.label}</p>
                                                 <p className="text-muted-foreground text-xs mt-0.5">{d.desc}</p>
+                                                {isCoding && (
+                                                    <p className="text-muted-foreground text-[10px] mt-1 font-mono">
+                                                        {CODING_MINS_PER_Q[d.id]} min/Q
+                                                    </p>
+                                                )}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Number of Questions</Label>
+                                    <Label>
+                                        Number of {isCoding ? "Problems" : "Questions"}
+                                        {isCoding && <span className="ml-2 text-xs text-muted-foreground font-normal">(max 3 for coding)</span>}
+                                    </Label>
                                     <div className="flex flex-wrap gap-2">
-                                        {QUESTION_COUNTS.map((c) => (
+                                        {counts.map((c) => (
                                             <Badge
                                                 key={c}
                                                 variant={config.count === c ? "default" : "outline"}
                                                 className="cursor-pointer px-5 py-1.5 text-sm"
                                                 onClick={() => setConfig({ ...config, count: c })}
                                             >
-                                                {c} Q
+                                                {c} {isCoding ? "P" : "Q"}
                                             </Badge>
                                         ))}
                                     </div>
+                                    {isCoding && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Estimated time: ~{getDuration(config.type, config.difficulty, config.count)} min
+                                        </p>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -231,8 +277,8 @@ export function InterviewSetupWizard() {
                                         { label: "Target Role", value: config.role || "Not specified" },
                                         { label: "Experience", value: config.experience },
                                         { label: "Difficulty", value: config.difficulty },
-                                        { label: "Questions", value: `${config.count} questions` },
-                                        { label: "Est. Duration", value: `~${DURATION_MAP[config.count] ?? 40} min` },
+                                        { label: isCoding ? "Problems" : isLive ? "Max Questions" : "Questions", value: `${config.count} ${isCoding ? "problems" : "questions"}` },
+                                        { label: "Est. Duration", value: `~${duration} min` },
                                     ].map((item) => (
                                         <div key={item.label} className="flex justify-between items-center">
                                             <span className="text-muted-foreground text-sm">{item.label}</span>
@@ -243,7 +289,12 @@ export function InterviewSetupWizard() {
                                 <div className="mt-5 p-4 rounded-xl bg-primary/5 border border-primary/20 flex items-start gap-3">
                                     <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                                     <p className="text-sm text-muted-foreground">
-                                        Groq LLaMA 3.3 will generate <strong className="text-foreground">{config.count} personalized questions</strong> for a <strong className="text-foreground">{config.role || "software engineering"}</strong> role at <strong className="text-foreground">{config.difficulty.toLowerCase()}</strong> difficulty.
+                                        {isLive ? (
+                                            <>Alex, your AI interviewer, will conduct a <strong className="text-foreground">live conversational interview</strong> for a <strong className="text-foreground">{config.role || "software engineering"}</strong> role at <strong className="text-foreground">{config.difficulty.toLowerCase()}</strong> difficulty — asking up to <strong className="text-foreground">{config.count} adaptive questions</strong> with follow-ups based on your responses.</>
+                                        ) : (
+                                            <>Groq LLaMA 3.3 will generate <strong className="text-foreground">{config.count} personalized {isCoding ? "coding problem" : "question"}{config.count > 1 ? "s" : ""}</strong> for a <strong className="text-foreground">{config.role || "software engineering"}</strong> role at <strong className="text-foreground">{config.difficulty.toLowerCase()}</strong> difficulty.
+                                            {isCoding && <> You&apos;ll have <strong className="text-foreground">{duration} minutes</strong> total.</>}</>
+                                        )}
                                     </p>
                                 </div>
                                 {error && (
