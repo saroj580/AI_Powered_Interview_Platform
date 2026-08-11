@@ -11,12 +11,16 @@ import { toast } from 'sonner';
 
 export default function OnboardingStep7() {
   const router = useRouter();
-  const { complete, progress } = useOnboardingStore();
-  const { user, setUser, token } = useAuthStore();
+  const { user } = useAuthStore();
   const [saving, setSaving] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function completeOnboarding() {
+      const { progress, complete } = useOnboardingStore.getState();
+      const { token, setUser } = useAuthStore.getState();
+
       try {
         const res = await fetch('/api/v1/onboarding/save', {
           method: 'POST',
@@ -27,6 +31,8 @@ export default function OnboardingStep7() {
           body: JSON.stringify({ progress, complete: true }),
         });
 
+        if (cancelled) return;
+
         if (res.ok) {
           const data = await res.json();
           if (data.user && data.token) {
@@ -36,14 +42,19 @@ export default function OnboardingStep7() {
           toast.success("Onboarding complete! Welcome to InterviewAI 🎉");
         }
       } catch {
-        toast.error("Could not save progress, but you can continue.");
+        if (!cancelled) {
+          toast.error("Could not save progress, but you can continue.");
+        }
       } finally {
-        setSaving(false);
+        if (!cancelled) setSaving(false);
       }
     }
 
     completeOnboarding();
-  }, [complete, progress, token, setUser]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (saving) return;
