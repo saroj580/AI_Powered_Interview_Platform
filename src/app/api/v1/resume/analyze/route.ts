@@ -4,13 +4,26 @@ import { groqChat } from "@/lib/groq";
 
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
-    // pdf-parse v2 API: PDFParse class with { data: buffer }
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: buffer });
-    const result = await parser.getText();
-    return result.text ?? "";
+    const pdfjsLib = await import("pdfjs-dist");
+    // Load the document
+    const loadingTask = pdfjsLib.getDocument({ data: buffer });
+    const pdf = await loadingTask.promise;
+    
+    let fullText = "";
+    
+    // Extract text from all pages
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(" ");
+      fullText += pageText + " ";
+    }
+    
+    return fullText.trim();
   } catch (err) {
-    console.error("[pdf-parse error]", err);
+    console.error("[pdfjs-dist error]", err);
     return "";
   }
 }
